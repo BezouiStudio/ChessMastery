@@ -14,7 +14,7 @@ const PieceComponent: React.FC<PieceProps> = ({ piece, size }) => {
   const colorClass = piece.color === 'w' ? 'text-piece-light-color' : 'text-piece-dark-color';
   
   // Default responsive size. Can be overridden by `size` prop.
-  const defaultSize = "text-[5.5vmin] sm:text-[5vmin] md:text-[4.5vmin] lg:text-[4vmin] xl:text-[3.5rem] leading-none";
+  const defaultSize = "text-[7vmin] sm:text-[6.5vmin] md:text-[6vmin] lg:text-[5.5vmin] xl:text-[4.5rem] leading-none";
 
 
   return (
@@ -31,3 +31,4 @@ const PieceComponent: React.FC<PieceProps> = ({ piece, size }) => {
 };
 
 export default PieceComponent;
+
