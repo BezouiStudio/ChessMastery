@@ -22,14 +22,13 @@ const FeedbackBlock: React.FC<{
   bgColorClass?: string;
   borderColorClass?: string;
   children: React.ReactNode;
-  className?: string;
-}> = ({ icon: Icon, title, titleColorClass = "text-foreground", bgColorClass = "bg-background", borderColorClass = "border-border", children, className }) => (
-  <div className={cn("p-3 rounded-lg border space-y-2", bgColorClass, borderColorClass, className)}>
-    <div className="flex items-center space-x-2">
-      <Icon className={cn("h-5 w-5 shrink-0", titleColorClass)} />
-      <h3 className={cn("font-semibold text-md", titleColorClass)}>{title}</h3>
+}> = ({ icon: Icon, title, titleColorClass = "text-foreground", bgColorClass = "bg-background", borderColorClass = "border-border", children }) => (
+  <div className={cn("p-4 rounded-lg border space-y-3 shadow-sm", bgColorClass, borderColorClass)}>
+    <div className="flex items-start space-x-3">
+      <Icon className={cn("h-6 w-6 shrink-0 mt-0.5", titleColorClass)} />
+      <h3 className={cn("font-semibold text-lg", titleColorClass)}>{title}</h3>
     </div>
-    <div className="pl-7 text-sm leading-relaxed space-y-2">
+    <div className="pl-[calc(1.5rem+0.75rem)] text-sm leading-relaxed space-y-2"> {/* 1.5rem for icon, 0.75rem for space-x-3 */}
       {children}
     </div>
   </div>
@@ -50,7 +49,7 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
         <ScrollArea className="h-full w-full rounded-md border p-3">
           <div className="space-y-4">
             {isLoading && (
-              <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground py-6">
+              <div className="flex items-center justify-center space-x-2 text-base text-muted-foreground py-8">
                 <Loader className="h-6 w-6 animate-spin text-primary" />
                 <span>AI is thinking... Please wait.</span>
               </div>
@@ -60,9 +59,9 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
               <FeedbackBlock
                 icon={Lightbulb}
                 title="General Tip"
-                titleColorClass="text-blue-600 dark:text-blue-400"
-                bgColorClass="bg-blue-500/10 dark:bg-blue-400/10"
-                borderColorClass="border-blue-500/30 dark:border-blue-400/30"
+                titleColorClass="text-secondary-foreground"
+                bgColorClass="bg-secondary/30"
+                borderColorClass="border-secondary/50"
               >
                 <p className="whitespace-pre-wrap">{hint.explanation}</p>
               </FeedbackBlock>
@@ -76,8 +75,8 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
                 bgColorClass="bg-accent/10"
                 borderColorClass="border-accent/30"
               >
-                <div className="flex items-center gap-2">
-                    <Badge variant="default" className="bg-accent text-accent-foreground text-base px-2 py-1">{hint.move}</Badge>
+                <div className="flex items-center gap-2 mb-1">
+                    <Badge variant="default" className="bg-accent text-accent-foreground text-base px-2.5 py-1">{hint.move}</Badge>
                 </div>
                 <p className="whitespace-pre-wrap">{hint.explanation}</p>
               </FeedbackBlock>
@@ -104,11 +103,11 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
                     bgColorClass="bg-accent/5"
                     borderColorClass="border-accent/20"
                   >
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {playerMoveAnalysis.betterPlayerMoveSuggestions.map((s, i) => (
-                        <div key={i} className="p-2 bg-accent/10 rounded-md border border-accent/20">
-                          <Badge variant="default" className="bg-accent text-accent-foreground mr-2 mb-1 sm:mb-0 text-sm">{s.move}</Badge>
-                          <p className="text-xs whitespace-pre-wrap inline leading-snug">{s.explanation}</p>
+                        <div key={i} className="p-2.5 bg-accent/10 rounded-md border border-accent/20 shadow-sm">
+                          <Badge variant="default" className="bg-accent text-accent-foreground mr-2 mb-1 text-sm px-2 py-0.5">{s.move}</Badge>
+                          <p className="text-sm whitespace-pre-wrap leading-snug">{s.explanation}</p>
                         </div>
                       ))}
                     </div>
@@ -118,9 +117,9 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
                   <FeedbackBlock
                     icon={Info}
                     title="Current Board Assessment (for AI)"
-                    titleColorClass="text-secondary-foreground/80"
-                    bgColorClass="bg-secondary/10"
-                    borderColorClass="border-secondary/30"
+                    titleColorClass="text-muted-foreground"
+                    bgColorClass="bg-muted/50"
+                    borderColorClass="border-muted"
                   >
                       <p className="whitespace-pre-wrap">{playerMoveAnalysis.generalBoardAnalysis}</p>
                    </FeedbackBlock>
@@ -129,15 +128,15 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
                   <FeedbackBlock
                     icon={Cpu}
                     title="AI's Potential Plans"
-                    titleColorClass="text-secondary-foreground/80"
-                    bgColorClass="bg-secondary/5"
-                    borderColorClass="border-secondary/20"
+                    titleColorClass="text-secondary-foreground"
+                    bgColorClass="bg-secondary/20"
+                    borderColorClass="border-secondary/40"
                   >
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                     {playerMoveAnalysis.suggestedMovesForCurrentTurn.map((s, i) => (
-                       <div key={i} className="p-2 bg-secondary/10 rounded-md border border-secondary/30">
-                         <Badge variant="outline" className="mr-2 mb-1 sm:mb-0 text-sm">{s.move}</Badge>
-                         <p className="text-xs whitespace-pre-wrap inline leading-snug">{s.explanation}</p>
+                       <div key={i} className="p-2.5 bg-secondary/30 rounded-md border border-secondary/50 shadow-sm">
+                         <Badge variant="secondary" className="mr-2 mb-1 text-sm px-2 py-0.5">{s.move}</Badge>
+                         <p className="text-sm whitespace-pre-wrap leading-snug">{s.explanation}</p>
                        </div>
                     ))}
                     </div>
@@ -149,21 +148,21 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
             {!isLoading && aiMoveExplanation && (
                <FeedbackBlock
                 icon={Bot}
-                title={`AI Played: ${aiMoveExplanation.move}`}
-                titleColorClass="text-green-600 dark:text-green-400"
-                bgColorClass="bg-green-500/10 dark:bg-green-400/10"
-                borderColorClass="border-green-500/30 dark:border-green-400/30"
+                title={`AI Played`}
+                titleColorClass="text-accent"
+                bgColorClass="bg-accent/10"
+                borderColorClass="border-accent/30"
                >
-                <div className="flex items-center gap-2">
-                  <Badge variant="default" className="bg-green-600 dark:bg-green-500 text-white text-base px-2 py-1">{aiMoveExplanation.move}</Badge>
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge variant="default" className="bg-accent text-accent-foreground text-base px-2.5 py-1">{aiMoveExplanation.move}</Badge>
                 </div>
                 <p className="whitespace-pre-wrap">{aiMoveExplanation.explanation}</p>
               </FeedbackBlock>
             )}
 
             {!isLoading && !hint && !playerMoveAnalysis && !aiMoveExplanation && (
-              <div className="flex flex-col items-center justify-center text-center py-10 text-sm text-muted-foreground space-y-3">
-                <HelpCircle className="h-10 w-10 text-primary/70" />
+              <div className="flex flex-col items-center justify-center text-center py-10 text-base text-muted-foreground space-y-4">
+                <HelpCircle className="h-12 w-12 text-primary/70" />
                 <p className="max-w-xs">Play a move or request a hint to get personalized feedback from the AI Tutor.</p>
               </div>
             )}
