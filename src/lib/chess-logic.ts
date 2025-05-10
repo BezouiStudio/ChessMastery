@@ -61,10 +61,10 @@ export function fenToBoard(fen: string): { board: Board; turn: PieceColor; castl
 
 export function boardToFen(board: Board, turn: PieceColor, castling: string, enPassant: string | null, halfmove: number, fullmove: number): string {
   let fen = "";
-  for (let r = 0; r < 8; r++) {
+  for (let r_loop = 0; r_loop < 8; r_loop++) {
     let emptyCount = 0;
-    for (let c = 0; c < 8; c++) {
-      const piece = board[r][c];
+    for (let c_loop = 0; c_loop < 8; c_loop++) {
+      const piece = board[r_loop][c_loop];
       if (piece) {
         if (emptyCount > 0) {
           fen += emptyCount;
@@ -78,7 +78,7 @@ export function boardToFen(board: Board, turn: PieceColor, castling: string, enP
     if (emptyCount > 0) {
       fen += emptyCount;
     }
-    if (r < 7) {
+    if (r_loop < 7) {
       fen += '/';
     }
   }
@@ -86,7 +86,6 @@ export function boardToFen(board: Board, turn: PieceColor, castling: string, enP
   return fen;
 }
 
-// Basic move validation (very simplified)
 export function getLegalMoves(board: Board, square: Square, turn: PieceColor): Square[] {
   const piece = getPieceAtSquare(board, square);
   if (!piece || piece.color !== turn) return [];
@@ -94,70 +93,105 @@ export function getLegalMoves(board: Board, square: Square, turn: PieceColor): S
   const { row, col } = squareToCoords(square);
   const moves: Square[] = [];
 
-  // This is extremely simplified and doesn't account for checks, pins, or other pieces blocking.
-  // A real implementation would be much more complex.
   switch (piece.symbol) {
     case 'p': // Pawn
       const direction = piece.color === 'w' ? -1 : 1;
       // Move one square forward
       if (isValidSquare(row + direction, col) && !board[row + direction][col]) {
         moves.push(coordsToSquare(row + direction, col));
-         // Move two squares forward (initial move)
-        if ((piece.color === 'w' && row === 6) || (piece.color === 'b' && row === 1)) {
-             if (isValidSquare(row + 2 * direction, col) && !board[row + 2 * direction][col] && !board[row + direction][col]) {
-                moves.push(coordsToSquare(row + 2 * direction, col));
-            }
+        // Move two squares forward (initial move)
+        if (((piece.color === 'w' && row === 6) || (piece.color === 'b' && row === 1)) &&
+            isValidSquare(row + 2 * direction, col) && 
+            !board[row + 2 * direction][col] // Path to second square must be clear
+           ) {
+            moves.push(coordsToSquare(row + 2 * direction, col));
         }
       }
       // Captures
       [-1, 1].forEach(offset => {
-        if (isValidSquare(row + direction, col + offset)) {
-          const targetPiece = board[row + direction][col + offset];
+        const captureRow = row + direction;
+        const captureCol = col + offset;
+        if (isValidSquare(captureRow, captureCol)) {
+          const targetPiece = board[captureRow][captureCol];
           if (targetPiece && targetPiece.color !== piece.color) {
-            moves.push(coordsToSquare(row + direction, col + offset));
+            moves.push(coordsToSquare(captureRow, captureCol));
           }
+          // TODO: En passant check against enPassantTarget state
         }
       });
       break;
+
     case 'n': // Knight
       const knightMoves = [
         [-2, -1], [-2, 1], [-1, -2], [-1, 2],
         [1, -2], [1, 2], [2, -1], [2, 1]
       ];
       knightMoves.forEach(([dr, dc]) => {
-        if (isValidSquare(row + dr, col + dc)) {
-          const targetPiece = board[row + dr][col + dc];
+        const nextRow = row + dr;
+        const nextCol = col + dc;
+        if (isValidSquare(nextRow, nextCol)) {
+          const targetPiece = board[nextRow][nextCol];
           if (!targetPiece || targetPiece.color !== piece.color) {
-            moves.push(coordsToSquare(row + dr, col + dc));
+            moves.push(coordsToSquare(nextRow, nextCol));
           }
         }
       });
       break;
-    // Implement Rook, Bishop, Queen, King similarly (simplified)
-    // For this example, we'll keep it short
-    default: // Rook, Bishop, Queen, King (very basic: can move to any empty or opponent square)
-      for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
-          if (r === row && c === col) continue;
-          const targetPiece = board[r][c];
-          if (!targetPiece || targetPiece.color !== piece.color) {
-             // Very simplified: allow movement to any valid square for these pieces if not self.
-             // This needs to be properly restricted by piece type (rook, bishop, etc.)
-             if (piece.symbol === 'r' && (r === row || c === col)) moves.push(coordsToSquare(r,c));
-             if (piece.symbol === 'b' && (Math.abs(r-row) === Math.abs(c-col))) moves.push(coordsToSquare(r,c));
-             if (piece.symbol === 'q' && (r === row || c === col || Math.abs(r-row) === Math.abs(c-col))) moves.push(coordsToSquare(r,c));
-             if (piece.symbol === 'k' && (Math.abs(r-row) <=1 && Math.abs(c-col) <=1)) moves.push(coordsToSquare(r,c));
+
+    case 'r': // Rook
+    case 'b': // Bishop
+    case 'q': // Queen
+      const pieceDirections: number[][] = [];
+      if (piece.symbol === 'r' || piece.symbol === 'q') {
+        pieceDirections.push([-1, 0], [1, 0], [0, -1], [0, 1]); // Up, Down, Left, Right
+      }
+      if (piece.symbol === 'b' || piece.symbol === 'q') {
+        pieceDirections.push([-1, -1], [-1, 1], [1, -1], [1, 1]); // Diagonals
+      }
+
+      for (const [dr, dc] of pieceDirections) {
+        for (let i = 1; i < 8; i++) {
+          const nextRow = row + dr * i;
+          const nextCol = col + dc * i;
+          if (!isValidSquare(nextRow, nextCol)) break; // Off board
+
+          const targetPiece = board[nextRow][nextCol];
+          if (targetPiece) {
+            if (targetPiece.color !== piece.color) {
+              moves.push(coordsToSquare(nextRow, nextCol)); // Capture
+            }
+            break; // Blocked by own or opponent piece
           }
+          moves.push(coordsToSquare(nextRow, nextCol)); // Empty square
         }
       }
       break;
+
+    case 'k': // King
+      const kingMoves = [
+        [-1, -1], [-1, 0], [-1, 1],
+        [0, -1],           [0, 1],
+        [1, -1], [1, 0], [1, 1]
+      ];
+      kingMoves.forEach(([dr, dc]) => {
+        const nextRow = row + dr;
+        const nextCol = col + dc;
+        if (isValidSquare(nextRow, nextCol)) {
+          const targetPiece = board[nextRow][nextCol];
+          if (!targetPiece || targetPiece.color !== piece.color) {
+            // TODO: Add check to prevent moving into check
+            moves.push(coordsToSquare(nextRow, nextCol));
+          }
+        }
+      });
+      // TODO: Implement castling based on castlingRights state
+      break;
   }
-  // Filter out moves that land on same-colored pieces (already partially handled)
-  return moves.filter(sq => {
-    const {row: tr, col: tc} = squareToCoords(sq);
-    const target = board[tr][tc];
-    return !target || target.color !== piece.color;
-  });
+
+  // TODO: Filter out moves that would leave the king in check.
+  // This requires a robust isKingInCheck function and simulating the move.
+  // For now, this basic validation is a step forward.
+  return moves;
 }
 
 export function getPieceAtSquare(board: Board, square: Square): Piece | null {
@@ -179,7 +213,7 @@ export function makeMove(
   toSquare: Square, 
   promotionPiece?: PieceSymbol
 ): { newBoard: Board, capturedPiece: Piece | null, isPromotion: boolean } {
-  const newBoard = board.map(row => [...row]); // Deep copy
+  const newBoard = board.map(r => [...r]); // Deep copy
   const fromCoords = squareToCoords(fromSquare);
   const toCoords = squareToCoords(toSquare);
 
@@ -198,6 +232,11 @@ export function makeMove(
   
   newBoard[fromCoords.row][fromCoords.col] = null;
 
+  // TODO: Handle castling move (move rook as well)
+  // TODO: Update en passant target square if pawn moves two squares
+  // TODO: Clear en passant target square if not used on the next move
+  // TODO: Update castling rights if king or rook moves
+
   return { newBoard, capturedPiece, isPromotion };
 }
 
@@ -208,7 +247,7 @@ export function moveToAlgebraic(move: { from: Square, to: Square, piece: PieceSy
     notation += move.piece.toUpperCase();
   }
   // Ambiguity resolution (e.g. Rae1) not handled
-  notation += move.from; // Simplified, usually just disambiguation part
+  // notation += move.from; // Simplified: For full algebraic, only use if ambiguous.
   if (move.captured) {
     if (move.piece === 'p') notation += move.from[0]; // e.g. exd5
     notation += 'x';
@@ -217,7 +256,7 @@ export function moveToAlgebraic(move: { from: Square, to: Square, piece: PieceSy
   if (move.promotion) {
     notation += '=' + move.promotion.toUpperCase();
   }
-  // Check (+) and Checkmate (#) not handled here, needs full game state
+  // Check (+) and Checkmate (#) not handled here, needs full game state and check detection
   return notation;
 }
 
@@ -239,29 +278,74 @@ export function getRandomAiMove(board: Board, color: PieceColor): { from: Square
 }
 
 export function isKingInCheck(board: Board, kingColor: PieceColor): boolean {
-  // Simplified: This function would iterate through all opponent pieces
-  // and see if any of them can attack the king's square.
-  // For now, always return false.
+  // Find the king's square
+  let kingSquare: Square | null = null;
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const piece = board[r][c];
+      if (piece && piece.symbol === 'k' && piece.color === kingColor) {
+        kingSquare = coordsToSquare(r, c);
+        break;
+      }
+    }
+    if (kingSquare) break;
+  }
+
+  if (!kingSquare) return false; // Should not happen in a valid game
+
+  // Check if any opponent piece can attack the king's square
+  const opponentColor = kingColor === 'w' ? 'b' : 'w';
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const piece = board[r][c];
+      if (piece && piece.color === opponentColor) {
+        // Temporarily change turn for getLegalMoves to check opponent's moves
+        const attackerSquare = coordsToSquare(r,c);
+        // For pawn captures, they attack differently than they move.
+        if (piece.symbol === 'p') {
+            const {row: kingR, col: kingC} = squareToCoords(kingSquare);
+            const {row: pawnR, col: pawnC} = squareToCoords(attackerSquare);
+            const direction = piece.color === 'w' ? -1 : 1;
+            if (pawnR + direction === kingR && (pawnC -1 === kingC || pawnC + 1 === kingC)) {
+                return true;
+            }
+        } else {
+            const legalMovesForAttacker = getLegalMoves(board, attackerSquare, opponentColor);
+            if (legalMovesForAttacker.includes(kingSquare)) {
+                return true;
+            }
+        }
+      }
+    }
+  }
   return false;
 }
 
 export function isCheckmateOrStalemate(board: Board, turn: PieceColor): 'checkmate' | 'stalemate' | null {
-    // Simplified: Check if any legal moves exist.
-    // A full implementation needs to check for check status as well.
+    let hasLegalMove = false;
     for (let r = 0; r < 8; r++) {
         for (let c = 0; c < 8; c++) {
             const piece = board[r][c];
             if (piece && piece.color === turn) {
-                if (getLegalMoves(board, coordsToSquare(r, c), turn).length > 0) {
-                    return null; // Legal move found
+                // Simulate each move and check if king is still in check
+                const legalMovesForPiece = getLegalMoves(board, coordsToSquare(r,c), turn);
+                for (const toSq of legalMovesForPiece) {
+                    const { newBoard } = makeMove(board, coordsToSquare(r,c), toSq); // Simplified, doesn't handle promotion choice
+                    if (!isKingInCheck(newBoard, turn)) {
+                        hasLegalMove = true;
+                        break;
+                    }
                 }
             }
+            if (hasLegalMove) break;
         }
+        if (hasLegalMove) break;
     }
-    // No legal moves. Determine if checkmate or stalemate.
-    // This requires a robust isKingInCheck function.
-    // if (isKingInCheck(board, turn)) return 'checkmate';
-    return 'stalemate'; // Simplified, assuming stalemate if no moves and not in check by current logic
+
+    if (!hasLegalMove) {
+        return isKingInCheck(board, turn) ? 'checkmate' : 'stalemate';
+    }
+    return null; 
 }
 
 export function getGameSummary(
@@ -274,37 +358,21 @@ export function getGameSummary(
   moves: Move[]
 ): ChessGameSummary {
   const fen = boardToFen(board, turn, castling, enPassant, halfmove, fullmove);
-  const checkStatus = isKingInCheck(board, turn); // Simplified
+  const checkStatus = isKingInCheck(board, turn);
   
-  let mateStatus: 'checkmate' | 'stalemate' | null = null;
+  const mateOrStale = isCheckmateOrStalemate(board, turn);
+  const isCheckmate = mateOrStale === 'checkmate';
+  const isStalemate = mateOrStale === 'stalemate';
   let winner: PieceColor | null = null;
-
-  // A more robust check for checkmate/stalemate would be:
-  const legalMovesForCurrentPlayer = [];
-  for (let r = 0; r < 8; r++) {
-    for (let c = 0; c < 8; c++) {
-      const piece = board[r][c];
-      if (piece && piece.color === turn) {
-        const fromSq = coordsToSquare(r, c);
-        getLegalMoves(board, fromSq, turn).forEach(toSq => legalMovesForCurrentPlayer.push({from: fromSq, to: toSq}));
-      }
-    }
-  }
-
-  if (legalMovesForCurrentPlayer.length === 0) {
-    if (checkStatus) {
-      mateStatus = 'checkmate';
-      winner = turn === 'w' ? 'b' : 'w';
-    } else {
-      mateStatus = 'stalemate';
-    }
+  if (isCheckmate) {
+    winner = turn === 'w' ? 'b' : 'w';
   }
   
   return {
     fen,
     board,
     turn,
-    castling: { // Simplified parsing
+    castling: { 
       w: { k: castling.includes('K'), q: castling.includes('Q') },
       b: { k: castling.includes('k'), q: castling.includes('q') },
     },
@@ -312,9 +380,9 @@ export function getGameSummary(
     halfmoveClock: halfmove,
     fullmoveNumber: fullmove,
     isCheck: checkStatus,
-    isCheckmate: mateStatus === 'checkmate',
-    isStalemate: mateStatus === 'stalemate',
-    isDraw: mateStatus === 'stalemate', // Add other draw conditions (50-move, repetition)
+    isCheckmate: isCheckmate,
+    isStalemate: isStalemate,
+    isDraw: isStalemate, // Add other draw conditions (50-move, repetition)
     winner,
     moves,
   };
@@ -331,9 +399,24 @@ export function parseAlgebraicMove(board: Board, turn: PieceColor, algebraic: st
     if (algebraic.length === 5) {
       promotion = algebraic[4].toLowerCase() as PieceSymbol;
     }
+    // Basic validation: check if there is a piece of the correct color at 'from'
+    const pieceAtFrom = getPieceAtSquare(board, from);
+    if (!pieceAtFrom || pieceAtFrom.color !== turn) {
+        console.warn(`Invalid move: No piece of color ${turn} at ${from} for move ${algebraic}`);
+        return null;
+    }
+    // Basic validation: check if the move to 'to' is in the list of legal moves (simple check)
+    // This is not a full validation, as getLegalMoves itself needs to be perfect.
+    // And this doesn't find WHICH piece moved for short algebraic like "Nf3".
+    // const legalMovesFromSquare = getLegalMoves(board, from, turn);
+    // if (!legalMovesFromSquare.includes(to)) {
+    //     console.warn(`Invalid move: ${from} to ${to} is not legal for the piece at ${from}.`);
+    //     return null;
+    // }
+
     return { from, to, promotion };
   }
   // A true parser is needed for standard algebraic notation (e.g. Ne5, exd5, O-O)
-  console.warn("Simplified algebraic parser, only handles long algebraic notation like e2e4");
+  console.warn("Simplified algebraic parser, only handles long algebraic notation like e2e4. Move received:", algebraic);
   return null;
 }
