@@ -90,7 +90,12 @@ const ChessboardComponent: React.FC<ChessboardProps> = ({
   };
 
   return (
-    <div className="w-full max-w-xs sm:max-w-sm md:max-w-full aspect-square rounded-lg overflow-hidden shadow-2xl border-4 border-card mx-auto md:mx-0">
+    <div className={cn(
+        "w-full aspect-square rounded-lg overflow-hidden shadow-2xl border-4 border-card mx-auto md:mx-0",
+        "md:max-w-full" // For desktop, allow parent to define size via basis
+        // On mobile, w-full and aspect-square will make it fill width and be square.
+        // Parent container in ChessPage is w-full on mobile.
+      )}>
         <div className="grid grid-cols-8 w-full h-full">
             {renderSquares()}
         </div>

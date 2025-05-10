@@ -71,30 +71,28 @@ const processKeywordsInSegment = (segment: string, keyPrefix: string): React.Rea
 };
 
 const parseTextRecursively = (text: string, keyPrefix: string, depth = 0): React.ReactNode[] => {
-  if (!text || depth > 10) return [text]; // Max depth to prevent infinite loops with malformed input
+  if (!text || depth > 10) return [text]; 
 
   const elements: React.ReactNode[] = [];
   let lastIndex = 0;
   
-  // Combine bold and move regex matching to avoid nested recursion issues
-  // Create a combined regex that captures either bold or move
   const combinedRegex = new RegExp(`(${boldRegex.source})|(${moveRegex.source})`, 'g');
   let match;
+  
+  // Reset lastIndex for global regex
   combinedRegex.lastIndex = 0;
 
   while ((match = combinedRegex.exec(text)) !== null) {
     if (match.index > lastIndex) {
-      // Process keywords in the segment before the current match
       elements.push(...processKeywordsInSegment(text.substring(lastIndex, match.index), `${keyPrefix}-kwseg-${lastIndex}`));
     }
 
-    const boldContent = match[2]; // Captured content of **bold**
-    const moveContent = match[3]; // Captured content of move
+    const boldContent = match[2]; 
+    const moveContent = match[3]; 
 
     if (boldContent) {
       elements.push(
         <strong key={`${keyPrefix}-bold-${match.index}`} className="font-bold">
-          {/* Recursively parse content within bold tags, specifically for moves/keywords now */}
           {parseTextRecursively(boldContent, `${keyPrefix}-boldcontent-${match.index}`, depth + 1)}
         </strong>
       );
@@ -109,7 +107,6 @@ const parseTextRecursively = (text: string, keyPrefix: string, depth = 0): React
   }
 
   if (lastIndex < text.length) {
-    // Process keywords in the remaining segment
     elements.push(...processKeywordsInSegment(text.substring(lastIndex), `${keyPrefix}-kwseg-${lastIndex}`));
   }
   
@@ -153,14 +150,15 @@ const FeedbackBlock: React.FC<{
 const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, aiMoveExplanation, isLoading }) => {
   
   return (
-    <Card className="h-full shadow-md">
-      <CardHeader className="py-3 px-3 sm:py-4 sm:px-4">
+    <Card className="h-full shadow-md flex flex-col"> {/* Ensure Card is h-full and flex-col for Dialog usage */}
+      <CardHeader className="py-3 px-3 sm:py-4 sm:px-4 shrink-0"> {/* shrink-0 for header */}
         <CardTitle className="text-lg sm:text-xl flex items-center">
           <Bot className="mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary" />
           AI Tutor
         </CardTitle>
       </CardHeader>
-      <CardContent className="h-[calc(100%-3.25rem)] sm:h-[calc(100%-3.75rem)] pb-2 px-1 sm:pb-3 sm:px-2"> {/* Adjusted height based on header */}
+      {/* CardContent takes remaining space and makes ScrollArea work correctly in Dialog */}
+      <CardContent className="flex-grow overflow-hidden pb-2 px-1 sm:pb-3 sm:px-2"> 
         <ScrollArea className="h-full w-full rounded-md border p-2 sm:p-3">
           <div className="space-y-3 sm:space-y-4">
             {isLoading && (

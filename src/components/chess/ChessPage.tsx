@@ -8,6 +8,9 @@ import MoveHistory from './MoveHistory';
 import AiTutorPanel from './AiTutorPanel';
 import GameStatus from './GameStatus';
 import PromotionDialog from './PromotionDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'; // Added Dialog imports
+import { Button } from '@/components/ui/button'; // Added Button import
+import { Bot, MessageSquareText } from 'lucide-react'; // Added Bot icon
 
 import {
   createInitialBoard,
@@ -29,6 +32,7 @@ import { explainMoveHint } from '@/ai/flows/move-hint-explanation';
 import { getVagueChessHint } from '@/ai/flows/vague-chess-hint';
 import { aiTutorAnalysis, AiTutorAnalysisOutput } from '@/ai/flows/ai-tutor-analysis';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile'; // Added useIsMobile hook
 
 const ChessPage: React.FC = () => {
   const [board, setBoard] = useState<Board>(createInitialBoard());
@@ -68,6 +72,9 @@ const ChessPage: React.FC = () => {
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
 
   const { toast } = useToast();
+  const isMobileView = useIsMobile(); // Use the hook
+  const [isAiTutorDialogOpen, setIsAiTutorDialogOpen] = useState(false);
+
 
   const resetGame = useCallback(() => {
     const initial = fenToBoard(INITIAL_FEN);
@@ -151,7 +158,7 @@ const ChessPage: React.FC = () => {
     setPlayerMoveAnalysisOutput(null);
     setAiMoveExplanationOutput(null);
     
-    setAiHint(undefined); // Clear hints when analysis starts
+    setAiHint(undefined); 
     setHighlightedHintSquares(null);
     setHintLevel(0);
     setIsFetchingVagueHint(false);
@@ -168,6 +175,7 @@ const ChessPage: React.FC = () => {
         lastMoveMadeByBlack: playerLastMove ? playerWhoMadeLastMoveColor === 'b' : undefined,
       });
       setPlayerMoveAnalysisOutput(result);
+      if (isMobileView) setIsAiTutorDialogOpen(true); // Open tutor dialog on mobile after analysis
     } catch (error) {
       console.error("Error getting player move analysis:", error);
       toast({ title: "Error", description: "Could not fetch player move analysis.", variant: "destructive" });
@@ -231,7 +239,6 @@ const ChessPage: React.FC = () => {
     setMoveHistory(prev => [...prev, moveNotation]);
     setLastMove({ from: fromSq, to: toSq });
     
-    // Reset hints after player move
     setAiHint(undefined);
     setHintLevel(0);
     setHighlightedHintSquares(null);
@@ -250,7 +257,7 @@ const ChessPage: React.FC = () => {
       setIsLoadingAi(false); 
     }
 
-  }, [board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber, isCheckmate, isStalemate, updateGameStatus, playerColor, aiColor, toast]);
+  }, [board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber, isCheckmate, isStalemate, updateGameStatus, playerColor, aiColor, toast, isMobileView]);
 
 
   const handleSquareClick = useCallback((square: Square) => {
@@ -301,10 +308,10 @@ const ChessPage: React.FC = () => {
         currentBoardState: fenBeforeCurrentAiMove,
         suggestedMove: aiMoveNotationValue,
         difficultyLevel: currentDifficulty,
-        // AI move explanation doesn't need to know if AI was in check, as AI should always make legal moves
       });
       setAiMoveExplanationOutput({ move: aiMoveNotationValue, explanation: result.explanation });
       toast({ title: "AI Move Explained", description: `AI played ${aiMoveNotationValue}`});
+      if (isMobileView) setIsAiTutorDialogOpen(true); // Open tutor dialog on mobile after AI explanation
     } catch (error) {
       console.error("Error getting AI move explanation:", error);
       toast({ title: "Error", description: "Could not fetch AI move explanation.", variant: "destructive" });
@@ -312,23 +319,19 @@ const ChessPage: React.FC = () => {
   };
 
 
-  // AI Opponent's turn
   useEffect(() => {
     if (turn === aiColor && !isCheckmate && !isStalemate) {
       const fenBeforeMove = boardToFen(board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber);
       
       setIsLoadingAi(true);
-      // Clear hints and related states if no player analysis is active from previous turn
       if (!playerMoveAnalysisOutput) { 
-          setAiMoveExplanationOutput(null); // Clear specific AI move explanation too
+          setAiMoveExplanationOutput(null); 
           setAiHint(undefined);
           setHighlightedHintSquares(null);
           setHintLevel(0);
           setIsFetchingVagueHint(false);
           setIsFetchingSpecificHint(false);
       } else {
-        // Player analysis is active, so AI is responding. Don't clear hints yet,
-        // but ensure specific AI move explanation is cleared before fetching new one.
         setAiMoveExplanationOutput(null); 
       }
 
@@ -371,7 +374,7 @@ const ChessPage: React.FC = () => {
         setIsLoadingAi(false);
       }, 1000);
     }
-  }, [turn, aiColor, board, processMove, isCheckmate, isStalemate, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber, difficulty, playerMoveAnalysisOutput, toast]);
+  }, [turn, aiColor, board, processMove, isCheckmate, isStalemate, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber, difficulty, playerMoveAnalysisOutput, toast, isMobileView]);
 
 
   const handleHint = async () => {
@@ -381,17 +384,16 @@ const ChessPage: React.FC = () => {
     }
 
     setIsLoadingAi(true);
-    // Clear previous player/AI analysis when hint is requested
     if (hintLevel === 0 || hintLevel === 2) {
       setPlayerMoveAnalysisOutput(null);
       setAiMoveExplanationOutput(null);
-      setHighlightedHintSquares(null); // Clear old highlights
+      setHighlightedHintSquares(null); 
     }
     
     const fen = boardToFen(board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber);
-    const playerCurrentlyInCheck = isCheck; // isCheck reflects current turn's (playerColor) check status
+    const playerCurrentlyInCheck = isCheck; 
 
-    if (hintLevel === 0 || hintLevel === 2) { // Request Vague Hint
+    if (hintLevel === 0 || hintLevel === 2) { 
       setIsFetchingVagueHint(true);
       setIsFetchingSpecificHint(false);
       try {
@@ -404,13 +406,14 @@ const ChessPage: React.FC = () => {
         setAiHint({ explanation: result.vagueHint, type: 'vague' });
         setHintLevel(1);
         toast({ title: "General Tip Provided"});
+        if (isMobileView) setIsAiTutorDialogOpen(true);
       } catch (error) {
         console.error("Error getting vague AI hint:", error);
         toast({ title: "Error", description: "Could not fetch general tip.", variant: "destructive" });
-        setHintLevel(0); // Reset on error
+        setHintLevel(0); 
       }
       setIsFetchingVagueHint(false);
-    } else if (hintLevel === 1) { // Request Specific Hint
+    } else if (hintLevel === 1) { 
       setIsFetchingSpecificHint(true);
       setIsFetchingVagueHint(false);
       try {
@@ -419,7 +422,7 @@ const ChessPage: React.FC = () => {
           toast({ title: "No Hint Available", description: "AI could not find a suitable hint.", variant: "destructive"});
           setIsLoadingAi(false);
           setIsFetchingSpecificHint(false);
-          setHintLevel(0); // Reset if no move found
+          setHintLevel(0); 
           return;
         }
         
@@ -454,10 +457,11 @@ const ChessPage: React.FC = () => {
         setHighlightedHintSquares({ from: hintMove.from, to: hintMove.to });
         setHintLevel(2);
         toast({ title: "AI Hint", description: `Suggested move: ${algebraicNotation}`});
+        if (isMobileView) setIsAiTutorDialogOpen(true);
       } catch (error) {
         console.error("Error getting specific AI hint:", error);
         toast({ title: "Error", description: "Could not fetch specific AI hint.", variant: "destructive" });
-        setHintLevel(1); // Revert to allow trying for specific again or getting new vague
+        setHintLevel(1); 
       }
       setIsFetchingSpecificHint(false);
     }
@@ -483,6 +487,8 @@ const ChessPage: React.FC = () => {
 
       <div className="flex flex-col md:flex-row gap-4 md:gap-6 lg:gap-10 mt-3 md:mt-4">
         <div className="w-full md:flex-shrink-0 md:flex-grow-0 md:basis-[calc(min(600px,100vw-22rem-2rem-8px))] lg:basis-[calc(min(700px,100vw-24rem-2.5rem-8px))] flex justify-center items-start">
+          {/* On mobile, chessboard container takes full width relative to padding. */}
+          {/* ChessboardComponent itself is w-full aspect-square. */}
           <ChessboardComponent
             board={board}
             onSquareClick={handleSquareClick}
@@ -506,15 +512,19 @@ const ChessPage: React.FC = () => {
             isPlayerTurn={turn === playerColor}
             isGameOver={isCheckmate || isStalemate}
             hintLevel={hintLevel}
+            isMobileView={isMobileView}
+            onOpenAiTutor={() => setIsAiTutorDialogOpen(true)}
           />
-          <div className="flex-grow min-h-[200px] sm:min-h-[250px] md:min-h-[300px]">
-            <AiTutorPanel 
-              hint={aiHint} 
-              playerMoveAnalysis={playerMoveAnalysisOutput}
-              aiMoveExplanation={aiMoveExplanationOutput}
-              isLoading={isLoadingAi} 
-            />
-          </div>
+          {!isMobileView && (
+            <div className="flex-grow min-h-[200px] sm:min-h-[250px] md:min-h-[300px]">
+              <AiTutorPanel 
+                hint={aiHint} 
+                playerMoveAnalysis={playerMoveAnalysisOutput}
+                aiMoveExplanation={aiMoveExplanationOutput}
+                isLoading={isLoadingAi} 
+              />
+            </div>
+          )}
           <div className="flex-grow min-h-[120px] sm:min-h-[150px] md:min-h-[200px]">
             <MoveHistory moves={moveHistory} />
           </div>
@@ -526,6 +536,20 @@ const ChessPage: React.FC = () => {
         onSelectPiece={handlePromotionSelect}
         playerColor={playerColor}
       />
+
+      {isMobileView && (
+        <Dialog open={isAiTutorDialogOpen} onOpenChange={setIsAiTutorDialogOpen}>
+          <DialogContent className="w-[95vw] max-w-lg md:max-w-xl max-h-[85vh] flex flex-col p-4 overflow-hidden">
+             {/* AiTutorPanel's Card has h-full, so it will fill DialogContent if DialogContent is flex flex-col */}
+            <AiTutorPanel 
+                hint={aiHint} 
+                playerMoveAnalysis={playerMoveAnalysisOutput}
+                aiMoveExplanation={aiMoveExplanationOutput}
+                isLoading={isLoadingAi} 
+              />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };
