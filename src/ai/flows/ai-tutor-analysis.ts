@@ -17,8 +17,10 @@ const AiTutorAnalysisInputSchema = z.object({
   boardState: z
     .string()
     .describe('A string representation of the current chess board state in FEN notation, AFTER any last move.'),
-  currentTurn: z.string().describe('The current turn in the chess game (w or b), AFTER any last move.'),
+  currentTurn: z.string().describe('The current turn in the chess game (w or b), AFTER any last move. This is the AI\'s turn if a player move was just made.'),
   lastPlayerMove: z.string().optional().describe('The last move made by the human player in algebraic notation (e.g., e4, Nf3). If provided, the analysis will include an evaluation of this move.'),
+  lastMoveMadeByWhite: z.boolean().optional().describe('True if the lastPlayerMove was made by White. Provide only if lastPlayerMove is present.'),
+  lastMoveMadeByBlack: z.boolean().optional().describe('True if the lastPlayerMove was made by Black. Provide only if lastPlayerMove is present.'),
 });
 export type AiTutorAnalysisInput = z.infer<typeof AiTutorAnalysisInputSchema>;
 
@@ -50,7 +52,7 @@ Current Board State (FEN Notation): {{{boardState}}}
 It is currently {{{currentTurn}}}'s turn to move.
 
 {{#if lastPlayerMove}}
-The player ({{#if_eq currentTurn "w"}}Black{{else}}White{{/if_eq}}) just played: {{{lastPlayerMove}}}.
+The player ({{#if lastMoveMadeByWhite}}White{{/if}}{{#if lastMoveMadeByBlack}}Black{{/if}}) just played: {{{lastPlayerMove}}}.
 Analyze this specific move for the player who made it:
 1.  **Player's Move Evaluation**: Evaluate the strategic and tactical implications of {{{lastPlayerMove}}}. Categorize its quality (e.g., Excellent, Good, Inaccuracy, Mistake, Blunder). Detail its strengths and weaknesses.
 2.  **Better Alternatives**: If there were clearly better alternative moves for the player instead of {{{lastPlayerMove}}}, list one or two such moves. For each, provide the move in algebraic notation and a concise explanation of why it would have been stronger. If {{{lastPlayerMove}}} was optimal or very good, state that no significantly better alternatives were available or the move was strong.
@@ -79,3 +81,4 @@ const aiTutorAnalysisFlow = ai.defineFlow(
     return output!;
   }
 );
+

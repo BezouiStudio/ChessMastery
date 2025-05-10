@@ -138,10 +138,16 @@ const ChessPage: React.FC = () => {
     setAiMoveExplanationOutput(null);
     setAiHint(undefined);
     try {
+      // currentTurnForFen is the AI's turn (the turn *after* the player's move).
+      // So, the player who made the last move is the opposite color.
+      const playerWhoMadeLastMoveColor = currentTurnForFen === 'w' ? 'b' : 'w';
+      
       const result = await aiTutorAnalysis({
         boardState: fen,
-        currentTurn: currentTurnForFen, // This is AI's turn now in FEN
+        currentTurn: currentTurnForFen, 
         lastPlayerMove: playerLastMove,
+        lastMoveMadeByWhite: playerLastMove ? playerWhoMadeLastMoveColor === 'w' : undefined,
+        lastMoveMadeByBlack: playerLastMove ? playerWhoMadeLastMoveColor === 'b' : undefined,
       });
       setPlayerMoveAnalysisOutput(result);
     } catch (error) {
@@ -193,7 +199,7 @@ const ChessPage: React.FC = () => {
       fetchPlayerMoveAnalysis(currentFenForAnalysis, newTurn, moveNotation);
     }
 
-  }, [board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber, isCheckmate, isStalemate, updateGameStatus, playerColor, aiColor]);
+  }, [board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber, isCheckmate, isStalemate, updateGameStatus, playerColor, aiColor, toast]);
 
 
   const handleSquareClick = useCallback((square: Square) => {
@@ -305,7 +311,7 @@ const ChessPage: React.FC = () => {
         // This path is more for when game ends or switches back to player without AI processing.
       }
     }
-  }, [turn, aiColor, board, processMove, isCheckmate, isStalemate, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber, difficulty, playerMoveAnalysisOutput]);
+  }, [turn, aiColor, board, processMove, isCheckmate, isStalemate, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber, difficulty, playerMoveAnalysisOutput, toast]);
 
 
   const handleHint = async () => {
@@ -406,3 +412,4 @@ const ChessPage: React.FC = () => {
 };
 
 export default ChessPage;
+
