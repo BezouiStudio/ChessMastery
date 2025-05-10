@@ -100,11 +100,14 @@ export function getLegalMoves(board: Board, square: Square, turn: PieceColor): S
       if (isValidSquare(row + direction, col) && !board[row + direction][col]) {
         moves.push(coordsToSquare(row + direction, col));
         // Move two squares forward (initial move)
-        if (((piece.color === 'w' && row === 6) || (piece.color === 'b' && row === 1)) &&
-            isValidSquare(row + 2 * direction, col) && 
-            !board[row + 2 * direction][col] // Path to second square must be clear
-           ) {
-            moves.push(coordsToSquare(row + 2 * direction, col));
+        if (
+          ((piece.color === 'w' && row === 6) || (piece.color === 'b' && row === 1)) && // Initial row
+          isValidSquare(row + direction, col) && // Intermediate square is valid (already checked for one-square move)
+          !board[row + direction][col] && // Intermediate square is empty
+          isValidSquare(row + 2 * direction, col) && // Destination square is valid
+          !board[row + 2 * direction][col] // Destination square is empty
+         ) {
+          moves.push(coordsToSquare(row + 2 * direction, col));
         }
       }
       // Captures

@@ -362,12 +362,12 @@ const ChessPage: React.FC = () => {
         isCheck={isCheck} 
         isCheckmate={isCheckmate} 
         isStalemate={isStalemate} 
-        isDraw={isStalemate}
+        isDraw={isStalemate} // isDraw should encompass more than just stalemate in a full game
         winner={winner}
       />
 
-      <div className="flex flex-col md:flex-row gap-4 md:gap-6 mt-4">
-        <div className="w-full md:w-[calc(100%-24rem)] lg:w-[calc(100%-26rem)] flex justify-center">
+      <div className="flex flex-col md:flex-row gap-4 md:gap-10 mt-4">
+        <div className="w-full md:flex-1 flex justify-center items-start p-0 md:p-4">
           <ChessboardComponent
             board={board}
             onSquareClick={handleSquareClick}
@@ -412,4 +412,3 @@ const ChessPage: React.FC = () => {
 };
 
 export default ChessPage;
-
