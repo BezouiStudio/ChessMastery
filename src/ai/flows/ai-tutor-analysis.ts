@@ -2,7 +2,8 @@
 'use server';
 
 /**
- * @fileOverview Provides an AI tutor analysis of the current chess board state.
+ * @fileOverview Provides an AI tutor analysis of the current chess board state,
+ * including an evaluation of the player's last move if provided.
  *
  * - aiTutorAnalysis - A function that provides an analysis of the current board state.
  * - AiTutorAnalysisInput - The input type for the aiTutorAnalysis function.
@@ -15,13 +16,23 @@ import {z} from 'genkit';
 const AiTutorAnalysisInputSchema = z.object({
   boardState: z
     .string()
-    .describe('A string representation of the current chess board state in FEN notation.'),
-  currentTurn: z.string().describe('The current turn in the chess game (white or black).'),
+    .describe('A string representation of the current chess board state in FEN notation, AFTER any last move.'),
+  currentTurn: z.string().describe('The current turn in the chess game (w or b), AFTER any last move.'),
+  lastPlayerMove: z.string().optional().describe('The last move made by the human player in algebraic notation (e.g., e4, Nf3). If provided, the analysis will include an evaluation of this move.'),
 });
 export type AiTutorAnalysisInput = z.infer<typeof AiTutorAnalysisInputSchema>;
 
 const AiTutorAnalysisOutputSchema = z.object({
-  analysis: z.string().describe('An analysis of the current board state, including key threats, opportunities, and potential weaknesses.'),
+  playerMoveEvaluation: z.string().optional().describe("Evaluation of the player's last move: its quality (e.g., excellent, good, inaccuracy, mistake, blunder), strategic/tactical implications, strengths, and weaknesses. This field is present if a 'lastPlayerMove' was provided in the input."),
+  betterPlayerMoveSuggestions: z.array(z.object({ 
+    move: z.string().describe("Suggested better move in algebraic notation."), 
+    explanation: z.string().describe("Explanation why this move is better.") 
+  })).optional().describe("Suggestions for better alternative moves for the player, if any. This field is present if a 'lastPlayerMove' was provided and better moves were identified by the AI. If the player's move was optimal or very good, this might be empty or state that no significantly better alternatives were available."),
+  generalBoardAnalysis: z.string().describe("A general analysis of the current board state: material balance, pawn structure, king safety, and key positional advantages or disadvantages for both White and Black. This analysis is from the perspective of the 'currentTurn' player."),
+  suggestedMovesForCurrentTurn: z.array(z.object({ 
+    move: z.string().describe("Suggested move in algebraic notation for the 'currentTurn' player."), 
+    explanation: z.string().describe("Reasoning for this strategic or tactical suggestion for the 'currentTurn' player.") 
+  })).optional().describe("Strategic or tactical move suggestions for the player whose turn it is now ('currentTurn').")
 });
 export type AiTutorAnalysisOutput = z.infer<typeof AiTutorAnalysisOutputSchema>;
 
@@ -33,19 +44,27 @@ const prompt = ai.definePrompt({
   name: 'aiTutorAnalysisPrompt',
   input: {schema: AiTutorAnalysisInputSchema},
   output: {schema: AiTutorAnalysisOutputSchema},
-  prompt: `You are an expert chess tutor, providing analysis of the current board state to help players improve their understanding and decision-making.
+  prompt: `You are an expert chess tutor.
 
-  Analyze the current chess board state, identifying key threats, opportunities, and potential weaknesses for both white and black.
+Current Board State (FEN Notation): {{{boardState}}}
+It is currently {{{currentTurn}}}'s turn to move.
 
-  Board State (FEN Notation): {{{boardState}}}
-  Current Turn: {{{currentTurn}}}
+{{#if lastPlayerMove}}
+The player ({{#if_eq currentTurn "w"}}Black{{else}}White{{/if_eq}}) just played: {{{lastPlayerMove}}}.
+Analyze this specific move for the player who made it:
+1.  **Player's Move Evaluation**: Evaluate the strategic and tactical implications of {{{lastPlayerMove}}}. Categorize its quality (e.g., Excellent, Good, Inaccuracy, Mistake, Blunder). Detail its strengths and weaknesses.
+2.  **Better Alternatives**: If there were clearly better alternative moves for the player instead of {{{lastPlayerMove}}}, list one or two such moves. For each, provide the move in algebraic notation and a concise explanation of why it would have been stronger. If {{{lastPlayerMove}}} was optimal or very good, state that no significantly better alternatives were available or the move was strong.
+{{/if}}
 
-  Provide a detailed analysis that includes:
-  - Overview of the material balance and pawn structure.
-  - Identification of any immediate threats to either player's pieces or king.
-  - Assessment of the positional advantages or disadvantages for each player.
-  - Suggestions for potential tactical or strategic moves to improve the current player's position.
-  - Highlighting any potential weaknesses in the opponent's position that could be exploited.
+Now, provide a general analysis FOR THE PLAYER WHOSE TURN IT IS NOW ({{{currentTurn}}}):
+3.  **General Board Analysis**: Give an overview of the material balance, pawn structure, king safety for both sides, and key positional advantages or disadvantages.
+4.  **Strategic Suggestions for {{{currentTurn}}}**: Suggest one or two potential strategic or tactical moves for {{{currentTurn}}} to consider for their upcoming move. For each suggestion, provide the move in algebraic notation and explain the reasoning behind it (e.g., improving piece activity, exploiting a weakness, setting up an attack, defensive necessity).
+
+Respond strictly in the format defined by the output schema.
+For "playerMoveEvaluation", provide a comprehensive text.
+For "betterPlayerMoveSuggestions", provide an array of objects or omit if none. If the player's move was good, explicitly state that in "playerMoveEvaluation" and this array can be empty.
+For "generalBoardAnalysis", provide a comprehensive text.
+For "suggestedMovesForCurrentTurn", provide an array of objects or omit if none.
 `,
 });
 
