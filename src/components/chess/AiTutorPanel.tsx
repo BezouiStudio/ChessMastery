@@ -76,27 +76,32 @@ const parseTextRecursively = (text: string, keyPrefix: string, depth = 0): React
   const elements: React.ReactNode[] = [];
   let lastIndex = 0;
   
+  // Combined regex that prioritizes bold, then moves
+  // This regex attempts to match **content** first. If not, it tries to match a chess move.
+  // The order in the alternation matters. (boldRegex.source) is tried before (moveRegex.source).
   const combinedRegex = new RegExp(`(${boldRegex.source})|(${moveRegex.source})`, 'g');
   let match;
   
-  // Reset lastIndex for global regex
-  combinedRegex.lastIndex = 0;
+  combinedRegex.lastIndex = 0; // Reset lastIndex for global regex
 
   while ((match = combinedRegex.exec(text)) !== null) {
     if (match.index > lastIndex) {
+      // Process keywords in the segment before this match
       elements.push(...processKeywordsInSegment(text.substring(lastIndex, match.index), `${keyPrefix}-kwseg-${lastIndex}`));
     }
 
-    const boldContent = match[2]; 
-    const moveContent = match[3]; 
+    const boldContent = match[2]; // Content of **...** (group 2 of boldRegex part)
+    const moveContent = match[3]; // Content of move (group 1 of moveRegex part, which is group 3 in combined)
 
     if (boldContent) {
       elements.push(
         <strong key={`${keyPrefix}-bold-${match.index}`} className="font-bold">
+          {/* Recursively parse content within bold tags, passing a new prefix */}
           {parseTextRecursively(boldContent, `${keyPrefix}-boldcontent-${match.index}`, depth + 1)}
         </strong>
       );
     } else if (moveContent) {
+      // This is a move, not inside a bold tag handled by this iteration
       elements.push(
         <HighlightedMove key={`${keyPrefix}-move-${match.index}`}>
           {moveContent}
@@ -107,6 +112,7 @@ const parseTextRecursively = (text: string, keyPrefix: string, depth = 0): React
   }
 
   if (lastIndex < text.length) {
+    // Process keywords in the remaining segment
     elements.push(...processKeywordsInSegment(text.substring(lastIndex), `${keyPrefix}-kwseg-${lastIndex}`));
   }
   
@@ -150,15 +156,14 @@ const FeedbackBlock: React.FC<{
 const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, aiMoveExplanation, isLoading }) => {
   
   return (
-    <Card className="h-full shadow-md flex flex-col"> {/* Ensure Card is h-full and flex-col for Dialog usage */}
-      <CardHeader className="py-3 px-3 sm:py-4 sm:px-4 shrink-0"> {/* shrink-0 for header */}
+    <Card className="h-full shadow-md flex flex-col">
+      <CardHeader className="py-3 px-3 sm:py-4 sm:px-4 shrink-0">
         <CardTitle className="text-lg sm:text-xl flex items-center">
           <Bot className="mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary" />
           AI Tutor
         </CardTitle>
       </CardHeader>
-      {/* CardContent takes remaining space and makes ScrollArea work correctly in Dialog */}
-      <CardContent className="flex-grow overflow-hidden pb-2 px-1 sm:pb-3 sm:px-2"> 
+      <CardContent className="flex-grow overflow-hidden py-2 px-1 sm:py-3 sm:px-2"> 
         <ScrollArea className="h-full w-full rounded-md border p-2 sm:p-3">
           <div className="space-y-3 sm:space-y-4">
             {isLoading && (

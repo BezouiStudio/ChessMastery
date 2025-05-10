@@ -4,7 +4,7 @@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Difficulty } from '@/types/chess';
-import { Lightbulb, RotateCcw, MessageSquareText } from 'lucide-react'; // Added MessageSquareText
+import { Lightbulb, RotateCcw } from 'lucide-react'; 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 
@@ -17,8 +17,6 @@ interface GameControlsProps {
   isPlayerTurn: boolean;
   isGameOver: boolean;
   hintLevel: 0 | 1 | 2;
-  isMobileView?: boolean; // Added prop
-  onOpenAiTutor?: () => void; // Added prop
 }
 
 const GameControls: React.FC<GameControlsProps> = ({
@@ -30,8 +28,6 @@ const GameControls: React.FC<GameControlsProps> = ({
   isPlayerTurn,
   isGameOver,
   hintLevel,
-  isMobileView,
-  onOpenAiTutor,
 }) => {
   let hintButtonText = 'Get AI Hint';
   if (hintLevel === 0 || hintLevel === 2) {
@@ -56,16 +52,6 @@ const GameControls: React.FC<GameControlsProps> = ({
         >
           <Lightbulb className="mr-2 h-4 w-4" /> {isLoadingHint ? 'Thinking...' : hintButtonText}
         </Button>
-        
-        {isMobileView && onOpenAiTutor && (
-          <Button 
-            onClick={onOpenAiTutor} 
-            className="w-full text-xs sm:text-sm" 
-            variant="secondary"
-          >
-            <MessageSquareText className="mr-2 h-4 w-4" /> View AI Tutor
-          </Button>
-        )}
         
         <div className="space-y-1 sm:space-y-1.5">
           <Label htmlFor="difficulty-select" className="text-xs sm:text-sm font-medium">AI Difficulty</Label>
