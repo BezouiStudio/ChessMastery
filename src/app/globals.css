@@ -37,6 +37,7 @@ body {
     --highlight-move: 122 39% 49%; /* Green, opacity will be applied in Tailwind */
     --highlight-selected: 122 39% 49%; 
     --highlight-check: 0 84.2% 60.2%; /* Destructive color for check */
+    --highlight-hint: 210 100% 50%; /* Bright Blue for hint highlight */
   }
 
   .dark {
@@ -68,6 +69,7 @@ body {
     --highlight-move: 122 39% 49%; 
     --highlight-selected: 122 39% 49%; 
     --highlight-check: 0 70% 50%; /* Brighter red for check in dark mode */
+    --highlight-hint: 210 100% 60%; /* Slightly lighter blue for dark mode hint highlight */
   }
 }
 

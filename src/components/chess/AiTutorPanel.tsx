@@ -4,24 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import type { AiTutorAnalysisOutput } from '@/ai/flows/ai-tutor-analysis';
-// import type { ExplainMoveHintOutput } from '@/ai/flows/move-hint-explanation'; // Not needed if we use a combined type below
 
 interface AiTutorPanelProps {
-  hint?: { move: string; explanation: string };
+  hint?: { move?: string; explanation: string; type: 'vague' | 'specific' };
   playerMoveAnalysis?: AiTutorAnalysisOutput;
   aiMoveExplanation?: { move: string; explanation: string };
   isLoading: boolean;
 }
 
 const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, aiMoveExplanation, isLoading }) => {
-  const getPlayerColorFromFenTurn = (fenTurn: string | undefined) => {
-    if (!fenTurn) return '';
-    // playerMoveAnalysis.currentTurn is the turn *after* the player's move, so it's the AI's turn.
-    // The player who made the move is the opposite.
-    return fenTurn === 'w' ? 'Black' : 'White';
-  }
-
-
+  
   return (
     <Card className="h-full">
       <CardHeader>
@@ -31,7 +23,14 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
         <ScrollArea className="h-full w-full rounded-md border p-3">
           {isLoading && <p className="text-sm text-muted-foreground">AI is thinking...</p>}
           
-          {!isLoading && hint && (
+          {!isLoading && hint && hint.type === 'vague' && (
+            <div className="mb-4 p-3 bg-blue-600/10 dark:bg-blue-400/10 rounded-lg border border-blue-600/30 dark:border-blue-400/30">
+              <h3 className="font-semibold text-md mb-1 text-blue-700 dark:text-blue-300">General Tip:</h3>
+              <p className="text-sm whitespace-pre-wrap">{hint.explanation}</p>
+            </div>
+          )}
+
+          {!isLoading && hint && hint.type === 'specific' && hint.move && (
             <div className="mb-4 p-3 bg-accent/10 rounded-lg border border-accent/30">
               <h3 className="font-semibold text-md mb-1">Suggested Move: <Badge variant="default" className="bg-accent text-accent-foreground">{hint.move}</Badge></h3>
               <p className="text-sm whitespace-pre-wrap">{hint.explanation}</p>
@@ -82,8 +81,8 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
           )}
 
           {!isLoading && aiMoveExplanation && (
-            <div className="mb-4 p-3 bg-green-600/10 rounded-lg border border-green-600/30">
-              <h3 className="font-semibold text-md mb-1">AI Played <Badge variant="default" className="bg-green-600 text-white">{aiMoveExplanation.move}</Badge>:</h3>
+             <div className="mb-4 p-3 bg-green-600/10 dark:bg-green-400/10 rounded-lg border border-green-600/30 dark:border-green-400/30">
+              <h3 className="font-semibold text-md mb-1 text-green-700 dark:text-green-300">AI Played <Badge variant="default" className="bg-green-600 text-white">{aiMoveExplanation.move}</Badge>:</h3>
               <p className="text-sm whitespace-pre-wrap">{aiMoveExplanation.explanation}</p>
             </div>
           )}

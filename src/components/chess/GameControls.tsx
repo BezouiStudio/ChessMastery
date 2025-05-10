@@ -16,6 +16,7 @@ interface GameControlsProps {
   onDifficultyChange: (difficulty: Difficulty) => void;
   isPlayerTurn: boolean;
   isGameOver: boolean;
+  hintLevel: 0 | 1 | 2;
 }
 
 const GameControls: React.FC<GameControlsProps> = ({
@@ -26,7 +27,15 @@ const GameControls: React.FC<GameControlsProps> = ({
   onDifficultyChange,
   isPlayerTurn,
   isGameOver,
+  hintLevel,
 }) => {
+  let hintButtonText = 'Get AI Hint';
+  if (hintLevel === 0 || hintLevel === 2) {
+      hintButtonText = 'Get General Tip';
+  } else if (hintLevel === 1) {
+      hintButtonText = 'Get Specific Move';
+  }
+
   return (
     <Card className="shadow-lg rounded-lg">
       <CardHeader className="pb-3 pt-4 px-4">
@@ -41,7 +50,7 @@ const GameControls: React.FC<GameControlsProps> = ({
           disabled={isLoadingHint || !isPlayerTurn || isGameOver} 
           className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
         >
-          <Lightbulb className="mr-2 h-4 w-4" /> {isLoadingHint ? 'Getting Hint...' : 'Get AI Hint'}
+          <Lightbulb className="mr-2 h-4 w-4" /> {isLoadingHint ? 'Thinking...' : hintButtonText}
         </Button>
         
         <div className="space-y-1.5">

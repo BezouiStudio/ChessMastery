@@ -26,6 +26,7 @@ import {
 } from '@/lib/chess-logic';
 import type { Board, Square, PieceColor, PieceSymbol, Difficulty } from '@/types/chess';
 import { explainMoveHint } from '@/ai/flows/move-hint-explanation';
+import { getVagueChessHint } from '@/ai/flows/vague-chess-hint';
 import { aiTutorAnalysis, AiTutorAnalysisOutput } from '@/ai/flows/ai-tutor-analysis';
 import { useToast } from '@/hooks/use-toast';
 
@@ -52,7 +53,11 @@ const ChessPage: React.FC = () => {
   const aiColor = playerColor === 'w' ? 'b' : 'w';
 
   const [isLoadingAi, setIsLoadingAi] = useState<boolean>(false);
-  const [aiHint, setAiHint] = useState<{ move: string; explanation: string } | undefined>(undefined);
+  const [aiHint, setAiHint] = useState<{ move?: string; explanation: string; type: 'vague' | 'specific' } | undefined>(undefined);
+  const [hintLevel, setHintLevel] = useState<0 | 1 | 2>(0); // 0: none, 1: vague requested, 2: specific requested/shown
+  const [highlightedHintSquares, setHighlightedHintSquares] = useState<{ from: Square; to: Square } | null>(null);
+  const [isFetchingVagueHint, setIsFetchingVagueHint] = useState<boolean>(false);
+  const [isFetchingSpecificHint, setIsFetchingSpecificHint] = useState<boolean>(false);
   
   const [playerMoveAnalysisOutput, setPlayerMoveAnalysisOutput] = useState<AiTutorAnalysisOutput | null>(null);
   const [aiMoveExplanationOutput, setAiMoveExplanationOutput] = useState<{ move: string; explanation: string } | null>(null);
@@ -82,7 +87,13 @@ const ChessPage: React.FC = () => {
     setWinner(null);
     setKingInCheckSquare(null);
     setGameStatusText("White's Turn");
+    
     setAiHint(undefined);
+    setHintLevel(0);
+    setHighlightedHintSquares(null);
+    setIsFetchingVagueHint(false);
+    setIsFetchingSpecificHint(false);
+
     setPlayerMoveAnalysisOutput(null);
     setAiMoveExplanationOutput(null);
     setLastMove(null);
@@ -139,7 +150,13 @@ const ChessPage: React.FC = () => {
     setIsLoadingAi(true);
     setPlayerMoveAnalysisOutput(null);
     setAiMoveExplanationOutput(null);
-    setAiHint(undefined);
+    
+    setAiHint(undefined); // Clear hints when analysis starts
+    setHighlightedHintSquares(null);
+    setHintLevel(0);
+    setIsFetchingVagueHint(false);
+    setIsFetchingSpecificHint(false);
+
     try {
       const playerWhoMadeLastMoveColor = currentTurnForFen === 'w' ? 'b' : 'w';
       
@@ -155,7 +172,6 @@ const ChessPage: React.FC = () => {
       console.error("Error getting player move analysis:", error);
       toast({ title: "Error", description: "Could not fetch player move analysis.", variant: "destructive" });
     }
-    // isLoadingAi will be set to false by the AI's turn useEffect or if AI doesn't move.
     if (isCheckmate || isStalemate || currentTurnForFen !== aiColor) {
         setIsLoadingAi(false);
     }
@@ -215,6 +231,13 @@ const ChessPage: React.FC = () => {
     setMoveHistory(prev => [...prev, moveNotation]);
     setLastMove({ from: fromSq, to: toSq });
     
+    // Reset hints after player move
+    setAiHint(undefined);
+    setHintLevel(0);
+    setHighlightedHintSquares(null);
+    setIsFetchingVagueHint(false);
+    setIsFetchingSpecificHint(false);
+
     updateGameStatus(newBoard, newTurn, updatedCastlingRights, updatedEnPassantTarget);
     setSelectedSquare(null);
     setValidMoves([]);
@@ -224,7 +247,7 @@ const ChessPage: React.FC = () => {
     if (prevTurn === playerColor && newTurn === aiColor && !isCheckmate && !isStalemate) {
       fetchPlayerMoveAnalysis(currentFenForAnalysis, newTurn, moveNotation);
     } else if (isCheckmate || isStalemate) {
-      setIsLoadingAi(false); // Ensure loading stops if game ends after player move
+      setIsLoadingAi(false); 
     }
 
   }, [board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber, isCheckmate, isStalemate, updateGameStatus, playerColor, aiColor, toast]);
@@ -248,16 +271,16 @@ const ChessPage: React.FC = () => {
           }
         }
         processMove(selectedSquare, square);
-      } else { // Clicked on a square not in valid moves
-        if (pieceOnClickedSquare && pieceOnClickedSquare.color === turn) { // Clicked on another of player's pieces
+      } else { 
+        if (pieceOnClickedSquare && pieceOnClickedSquare.color === turn) { 
           setSelectedSquare(square);
           setValidMoves(getLegalMoves(board, square, turn, castlingRights, enPassantTarget));
-        } else { // Clicked on empty square or opponent piece not in valid moves
+        } else { 
           setSelectedSquare(null);
           setValidMoves([]);
         }
       }
-    } else if (pieceOnClickedSquare && pieceOnClickedSquare.color === turn) { // No square selected yet, clicked on one of player's pieces
+    } else if (pieceOnClickedSquare && pieceOnClickedSquare.color === turn) { 
       setSelectedSquare(square);
       setValidMoves(getLegalMoves(board, square, turn, castlingRights, enPassantTarget));
     }
@@ -294,10 +317,20 @@ const ChessPage: React.FC = () => {
       const fenBeforeMove = boardToFen(board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber);
       
       setIsLoadingAi(true);
+      // Clear hints and related states if no player analysis is active from previous turn
       if (!playerMoveAnalysisOutput) { 
-          setAiMoveExplanationOutput(null);
+          setAiMoveExplanationOutput(null); // Clear specific AI move explanation too
           setAiHint(undefined);
+          setHighlightedHintSquares(null);
+          setHintLevel(0);
+          setIsFetchingVagueHint(false);
+          setIsFetchingSpecificHint(false);
+      } else {
+        // Player analysis is active, so AI is responding. Don't clear hints yet,
+        // but ensure specific AI move explanation is cleared before fetching new one.
+        setAiMoveExplanationOutput(null); 
       }
+
 
       setTimeout(async () => {
         const aiMove = getRandomAiMove(board, aiColor, castlingRights, enPassantTarget);
@@ -307,7 +340,7 @@ const ChessPage: React.FC = () => {
           if (aiPiece?.symbol === 'p') {
             const {row: toRow} = squareToCoords(aiMove.to);
             if ((aiPiece.color === 'w' && toRow === 0) || (aiPiece.color === 'b' && toRow === 7)) {
-              promotionSymbol = 'q'; // AI always promotes to queen for simplicity
+              promotionSymbol = 'q'; 
             }
           }
           
@@ -323,9 +356,9 @@ const ChessPage: React.FC = () => {
             piece: aiPiece!.symbol, 
             captured: actualCapturedForAi, 
             promotion: promotionSymbol,
-            boardBeforeMove: board, // current board state before AI move
-            boardAfterMove: applyMoveLogic(board, aiMove.from, aiMove.to, castlingRights, enPassantTarget, promotionSymbol).newBoard, // board state after AI move for check/mate status
-            turn: aiColor, // AI's turn
+            boardBeforeMove: board, 
+            boardAfterMove: applyMoveLogic(board, aiMove.from, aiMove.to, castlingRights, enPassantTarget, promotionSymbol).newBoard, 
+            turn: aiColor, 
             isCastlingKingside,
             isCastlingQueenside,
             enPassantTargetOccurred: isEnPassantCaptureForAi
@@ -345,52 +378,85 @@ const ChessPage: React.FC = () => {
       toast({ title: "Hint Unavailable", description: "Cannot get a hint now.", variant: "destructive" });
       return;
     }
+
     setIsLoadingAi(true);
-    setAiHint(undefined); 
-    setPlayerMoveAnalysisOutput(null);
-    setAiMoveExplanationOutput(null);
-    try {
-      const hintMove = getRandomAiMove(board, turn, castlingRights, enPassantTarget); 
-      if (!hintMove) {
-        toast({ title: "No Hint Available", description: "AI could not find a suitable hint.", variant: "destructive"});
-        setIsLoadingAi(false);
-        return;
+    // Clear previous player/AI analysis when hint is requested
+    if (hintLevel === 0 || hintLevel === 2) {
+      setPlayerMoveAnalysisOutput(null);
+      setAiMoveExplanationOutput(null);
+      setHighlightedHintSquares(null); // Clear old highlights
+    }
+    
+
+    if (hintLevel === 0 || hintLevel === 2) { // Request Vague Hint
+      setIsFetchingVagueHint(true);
+      setIsFetchingSpecificHint(false);
+      try {
+        const fen = boardToFen(board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber);
+        const result = await getVagueChessHint({
+          currentBoardState: fen,
+          currentTurn: turn,
+          difficultyLevel: difficulty,
+        });
+        setAiHint({ explanation: result.vagueHint, type: 'vague' });
+        setHintLevel(1);
+        toast({ title: "General Tip Provided"});
+      } catch (error) {
+        console.error("Error getting vague AI hint:", error);
+        toast({ title: "Error", description: "Could not fetch general tip.", variant: "destructive" });
+        setHintLevel(0); // Reset on error
       }
-      
-      const fen = boardToFen(board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber);
-      const pieceBeingMoved = getPieceAtSquare(board, hintMove.from);
-      
-      const isEnPassantCaptureForHint = pieceBeingMoved?.symbol === 'p' && hintMove.to === enPassantTarget && hintMove.from !== hintMove.to;
-      const directCapturedPieceForHint = getPieceAtSquare(board, hintMove.to);
-      const actualCapturedForHint = !!directCapturedPieceForHint || isEnPassantCaptureForHint;
+      setIsFetchingVagueHint(false);
+    } else if (hintLevel === 1) { // Request Specific Hint
+      setIsFetchingSpecificHint(true);
+      setIsFetchingVagueHint(false);
+      try {
+        const hintMove = getRandomAiMove(board, turn, castlingRights, enPassantTarget); 
+        if (!hintMove) {
+          toast({ title: "No Hint Available", description: "AI could not find a suitable hint.", variant: "destructive"});
+          setIsLoadingAi(false);
+          setIsFetchingSpecificHint(false);
+          setHintLevel(0); // Reset if no move found
+          return;
+        }
+        
+        const fen = boardToFen(board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber);
+        const pieceBeingMoved = getPieceAtSquare(board, hintMove.from);
+        
+        const isEnPassantCaptureForHint = pieceBeingMoved?.symbol === 'p' && hintMove.to === enPassantTarget && hintMove.from !== hintMove.to;
+        const directCapturedPieceForHint = getPieceAtSquare(board, hintMove.to);
+        const actualCapturedForHint = !!directCapturedPieceForHint || isEnPassantCaptureForHint;
 
-      const {isCastlingKingside, isCastlingQueenside} = applyMoveLogic(board, hintMove.from, hintMove.to, castlingRights, enPassantTarget, undefined);
+        const {isCastlingKingside, isCastlingQueenside} = applyMoveLogic(board, hintMove.from, hintMove.to, castlingRights, enPassantTarget, undefined);
 
-
-      const algebraicNotation = moveToAlgebraic({
-          from: hintMove.from, 
-          to: hintMove.to, 
-          piece: pieceBeingMoved!.symbol, 
-          captured: actualCapturedForHint,
-          // promotion not handled for hints for simplicity, assume no pawn promotion hint
-          boardBeforeMove: board,
-          boardAfterMove: applyMoveLogic(board, hintMove.from, hintMove.to, castlingRights, enPassantTarget, undefined).newBoard, // Simulate to check for check/mate
-          turn: turn,
-          isCastlingKingside,
-          isCastlingQueenside,
-          enPassantTargetOccurred: isEnPassantCaptureForHint
-      });
-      
-      const result = await explainMoveHint({
-        currentBoardState: fen,
-        suggestedMove: algebraicNotation,
-        difficultyLevel: difficulty,
-      });
-      setAiHint({ move: algebraicNotation, explanation: result.explanation });
-      toast({ title: "AI Hint", description: `Suggested move: ${algebraicNotation}`});
-    } catch (error) {
-      console.error("Error getting AI hint:", error);
-      toast({ title: "Error", description: "Could not fetch AI hint.", variant: "destructive" });
+        const algebraicNotation = moveToAlgebraic({
+            from: hintMove.from, 
+            to: hintMove.to, 
+            piece: pieceBeingMoved!.symbol, 
+            captured: actualCapturedForHint,
+            boardBeforeMove: board,
+            boardAfterMove: applyMoveLogic(board, hintMove.from, hintMove.to, castlingRights, enPassantTarget, undefined).newBoard,
+            turn: turn,
+            isCastlingKingside,
+            isCastlingQueenside,
+            enPassantTargetOccurred: isEnPassantCaptureForHint
+        });
+        
+        const result = await explainMoveHint({
+          currentBoardState: fen,
+          suggestedMove: algebraicNotation,
+          difficultyLevel: difficulty,
+        });
+        setAiHint({ move: algebraicNotation, explanation: result.explanation, type: 'specific' });
+        setHighlightedHintSquares({ from: hintMove.from, to: hintMove.to });
+        setHintLevel(2);
+        toast({ title: "AI Hint", description: `Suggested move: ${algebraicNotation}`});
+      } catch (error) {
+        console.error("Error getting specific AI hint:", error);
+        toast({ title: "Error", description: "Could not fetch specific AI hint.", variant: "destructive" });
+        setHintLevel(1); // Revert to allow trying for specific again or getting new vague
+      }
+      setIsFetchingSpecificHint(false);
     }
     setIsLoadingAi(false);
   };
@@ -423,6 +489,7 @@ const ChessPage: React.FC = () => {
             isPlayerTurn={turn === playerColor && !isLoadingAi && !isCheckmate && !isStalemate}
             playerColor={playerColor}
             kingInCheckSquare={kingInCheckSquare}
+            highlightedHintSquares={highlightedHintSquares}
           />
         </div>
 
@@ -430,11 +497,12 @@ const ChessPage: React.FC = () => {
           <GameControls
             onNewGame={resetGame}
             onHint={handleHint}
-            isLoadingHint={isLoadingAi && !playerMoveAnalysisOutput && !aiMoveExplanationOutput} // Only show "getting hint" if hint was specifically requested
+            isLoadingHint={isFetchingVagueHint || isFetchingSpecificHint}
             difficulty={difficulty}
             onDifficultyChange={setDifficulty}
             isPlayerTurn={turn === playerColor}
             isGameOver={isCheckmate || isStalemate}
+            hintLevel={hintLevel}
           />
           <div className="flex-grow min-h-[250px] md:min-h-[300px]">
             <AiTutorPanel 

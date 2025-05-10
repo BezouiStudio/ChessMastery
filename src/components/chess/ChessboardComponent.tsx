@@ -14,6 +14,7 @@ interface ChessboardProps {
   isPlayerTurn: boolean;
   playerColor: 'w' | 'b'; 
   kingInCheckSquare: Square | null;
+  highlightedHintSquares?: { from: Square; to: Square } | null;
 }
 
 const ChessboardComponent: React.FC<ChessboardProps> = ({
@@ -24,23 +25,19 @@ const ChessboardComponent: React.FC<ChessboardProps> = ({
   lastMove,
   isPlayerTurn,
   playerColor,
-  kingInCheckSquare
+  kingInCheckSquare,
+  highlightedHintSquares,
 }) => {
   const renderSquares = () => {
     const squares = [];
-    // Standard orientation: white at bottom (row 7), black at top (row 0)
     const displayBoard = playerColor === 'w' ? board : [...board].reverse().map(row => [...row].reverse());
-
 
     for (let r_idx = 0; r_idx < 8; r_idx++) {
       for (let c_idx = 0; c_idx < 8; c_idx++) {
-        // Determine actual row and col based on playerColor for consistent interaction logic
-        // even if board visual is flipped (though it's not flipped here for simplicity).
         const actualRow = playerColor === 'w' ? r_idx : 7 - r_idx;
         const actualCol = playerColor === 'w' ? c_idx : 7 - c_idx;
         
         const square = coordsToSquare(actualRow, actualCol);
-        // Use displayBoard for rendering piece at visual [r_idx][c_idx]
         const piece = displayBoard[r_idx][c_idx]; 
         
         const isLightSquare = (r_idx + c_idx) % 2 === 0;
@@ -49,6 +46,8 @@ const ChessboardComponent: React.FC<ChessboardProps> = ({
         const isLastMoveOrigin = lastMove?.from === square;
         const isLastMoveTarget = lastMove?.to === square;
         const isKingInCheck = kingInCheckSquare === square;
+        const isHintedFrom = highlightedHintSquares?.from === square;
+        const isHintedTo = highlightedHintSquares?.to === square;
 
         squares.push(
           <div
@@ -58,6 +57,7 @@ const ChessboardComponent: React.FC<ChessboardProps> = ({
               isLightSquare ? "bg-board-light-square" : "bg-board-dark-square",
               (isPlayerTurn || selectedSquare) && "cursor-pointer hover:bg-opacity-80",
               isSelected && "ring-3 ring-highlight-selected ring-inset z-10 bg-highlight-selected/30",
+              (isHintedFrom || isHintedTo) && "bg-highlight-hint/30 ring-2 ring-highlight-hint/70 ring-inset",
             )}
             onClick={() => (isPlayerTurn || selectedSquare) && onSquareClick(square)}
             role="button"
@@ -70,7 +70,7 @@ const ChessboardComponent: React.FC<ChessboardProps> = ({
                 piece ? "bg-highlight-move/40 rounded-full w-3/4 h-3/4 opacity-90" : "bg-highlight-move/25 rounded-full w-1/2 h-1/2 opacity-70"
               )} />
             )}
-            {(isLastMoveOrigin || isLastMoveTarget) && (
+            {(isLastMoveOrigin || isLastMoveTarget) && !isHintedFrom && !isHintedTo && ( // Don't show last move if it's also a hint square to avoid color clash
               <div className="absolute inset-0 bg-highlight-move/20 pointer-events-none" />
             )}
              {isKingInCheck && (
@@ -84,7 +84,7 @@ const ChessboardComponent: React.FC<ChessboardProps> = ({
   };
 
   return (
-    <div className="w-full max-w-[calc(100vh-200px)] sm:max-w-[calc(100vh-250px)] md:max-w-[600px] lg:max-w-[700px] aspect-square rounded-lg overflow-hidden shadow-2xl border-4 border-card">
+    <div className="w-full max-w-[calc(100vh-200px)] sm:max-w-[calc(100vh-250px)] md:max-w-[calc(min(600px,100vw-24rem-2rem))] lg:max-w-[calc(min(700px,100vw-26rem-2.5rem))] aspect-square rounded-lg overflow-hidden shadow-2xl border-4 border-card">
         <div className="grid grid-cols-8 w-full h-full">
             {renderSquares()}
         </div>

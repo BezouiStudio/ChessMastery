@@ -68,6 +68,7 @@ export default {
         'highlight-move': 'hsl(var(--highlight-move))',
         'highlight-selected': 'hsl(var(--highlight-selected))',
         'highlight-check': 'hsl(var(--highlight-check))',
+        'highlight-hint': 'hsl(var(--highlight-hint))',
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
