@@ -82,43 +82,48 @@ const parseTextRecursively = (text: string, keyPrefix: string, isAlreadyBold: bo
 
     while ((match = boldRegex.exec(text)) !== null) {
       if (match.index > lastIndex) {
-        elements.push(...parseTextRecursively(text.substring(lastIndex, match.index), `${keyPrefix}-nonbold-${lastIndex}`, false));
+        // Corrected: Pass `true` for isAlreadyBold to process this segment for moves/keywords
+        elements.push(...parseTextRecursively(text.substring(lastIndex, match.index), `${keyPrefix}-nonbold-${lastIndex}`, true));
       }
       elements.push(
         <strong key={`${keyPrefix}-bold-${match.index}`} className="font-bold">
+          {/* Content inside bold tags is processed for moves/keywords */}
           {parseTextRecursively(match[1], `${keyPrefix}-boldcontent-${match.index}`, true)}
         </strong>
       );
       lastIndex = boldRegex.lastIndex;
     }
     if (lastIndex < text.length) {
-      elements.push(...parseTextRecursively(text.substring(lastIndex), `${keyPrefix}-nonbold-${lastIndex}`, false));
+      // Corrected: Pass `true` for isAlreadyBold to process this segment for moves/keywords
+      elements.push(...parseTextRecursively(text.substring(lastIndex), `${keyPrefix}-nonbold-${lastIndex}`, true));
     }
     return elements.map((el, i) => <React.Fragment key={`${keyPrefix}-mainfrag-${i}`}>{el}</React.Fragment>);
   }
 
-  // If isAlreadyBold or no more bold markers in this segment, process for moves and keywords
+  // If isAlreadyBold is true (or no more bold markers were found in the segment from the !isAlreadyBold path),
+  // process for moves and keywords.
   moveRegex.lastIndex = 0;
-  let lastIndex = 0;
-  let match;
+  let lastIndexForMoves = 0; // Use a different lastIndex variable to avoid conflict
+  let moveMatch;
 
-  while ((match = moveRegex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      elements.push(...processKeywordsInSegment(text.substring(lastIndex, match.index), `${keyPrefix}-kwseg-${lastIndex}`));
+  while ((moveMatch = moveRegex.exec(text)) !== null) {
+    if (moveMatch.index > lastIndexForMoves) {
+      elements.push(...processKeywordsInSegment(text.substring(lastIndexForMoves, moveMatch.index), `${keyPrefix}-kwseg-${lastIndexForMoves}`));
     }
     elements.push(
-      <HighlightedMove key={`${keyPrefix}-move-${match.index}`}>
-        {match[0]}
+      <HighlightedMove key={`${keyPrefix}-move-${moveMatch.index}`}>
+        {moveMatch[0]}
       </HighlightedMove>
     );
-    lastIndex = moveRegex.lastIndex;
+    lastIndexForMoves = moveRegex.lastIndex;
   }
-  if (lastIndex < text.length) {
-    elements.push(...processKeywordsInSegment(text.substring(lastIndex), `${keyPrefix}-kwseg-${lastIndex}`));
+  if (lastIndexForMoves < text.length) {
+    elements.push(...processKeywordsInSegment(text.substring(lastIndexForMoves), `${keyPrefix}-kwseg-${lastIndexForMoves}`));
   }
   
   return elements.map((el, i) => <React.Fragment key={`${keyPrefix}-subfrag-${i}`}>{el}</React.Fragment>);
 };
+
 
 const parseAndHighlightText = (text: string | undefined): React.ReactNode => {
   if (!text) return null;
