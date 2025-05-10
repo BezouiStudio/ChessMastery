@@ -59,13 +59,24 @@ export default {
   				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
   				border: 'hsl(var(--sidebar-border))',
   				ring: 'hsl(var(--sidebar-ring))'
-  			}
+  			},
+        // Custom ChessMastery colors
+        'board-light-square': 'hsl(var(--board-light-square))',
+        'board-dark-square': 'hsl(var(--board-dark-square))',
+        'piece-light-color': 'hsl(var(--piece-light-color))',
+        'piece-dark-color': 'hsl(var(--piece-dark-color))',
+        'highlight-move': 'hsl(var(--highlight-move))',
+        'highlight-selected': 'hsl(var(--highlight-selected))',
+        'highlight-check': 'hsl(var(--highlight-check))',
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
   		},
+  		fontFamily: {
+        sans: ['var(--font-inter)', 'sans-serif'],
+      },
   		keyframes: {
   			'accordion-down': {
   				from: {
@@ -92,3 +103,4 @@ export default {
   },
   plugins: [require("tailwindcss-animate")],
 } satisfies Config;
+
