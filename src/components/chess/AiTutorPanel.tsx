@@ -1,12 +1,104 @@
 // src/components/chess/AiTutorPanel.tsx
 'use client';
 
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import type { AiTutorAnalysisOutput } from '@/ai/flows/ai-tutor-analysis';
 import { Lightbulb, Target, ClipboardCheck, Sparkles, Info, Cpu, Bot, Loader, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+// Helper components for highlighting
+const HighlightedMove: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <span 
+    className="bg-accent text-accent-foreground font-semibold px-1.5 py-0.5 mx-0.5 rounded align-baseline inline-block text-xs shadow-sm"
+  >
+    {children}
+  </span>
+);
+
+const HighlightedKeyword: React.FC<{ children: React.ReactNode; type: 'positive' | 'negative' | 'neutral' }> = ({ children, type }) => {
+  let className = "font-semibold";
+  if (type === 'positive') {
+    className = cn(className, "text-accent");
+  } else if (type === 'negative') {
+    className = cn(className, "text-destructive");
+  } else { // neutral
+    className = cn(className, "text-primary");
+  }
+  return <span className={className}>{children}</span>;
+};
+
+const parseAndHighlightText = (text: string | undefined): React.ReactNode => {
+  if (!text) return null;
+
+  const moveRegex = /\b([PNBRQK]?[a-h]?[1-8]?x?[a-h][1-8](?:=[PNBRQK])?[+#]?|O-O(?:-O)?)\b/g;
+  
+  const positiveKeywordsList = ['strong', 'standard', 'well-regarded', 'excellent', 'good', 'advantage', 'control', 'develop', 'initiative', 'king safety', 'pin', 'fork', 'skewer', 'discovered attack', 'key', 'critical', 'opportunity', 'improving', 'better', 'solid', 'active'];
+  const negativeKeywordsList = ['inaccuracy', 'mistake', 'blunder', 'disadvantage', 'threat', 'weakness', 'poor', 'passive', 'exposed', 'unsafe'];
+  const neutralKeywordsList = ['center', 'queen', 'bishop', 'rook', 'knight', 'pawn', 'king', 'kingside', 'queenside', 'tempo', 'material', 'pawn structure', 'opening', 'middlegame', 'endgame', 'tactic', 'strategy', 'positional'];
+
+  // Combine all keywords for a single regex pass on text segments
+  const allKeywords = [...positiveKeywordsList, ...negativeKeywordsList, ...neutralKeywordsList];
+  const keywordRegex = new RegExp(`\\b(${allKeywords.join('|')})\\b`, 'gi');
+  
+  const elements: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+
+  const processSegment = (segment: string, segmentKeyPrefix: string) => {
+    const segmentElements: React.ReactNode[] = [];
+    let segmentLastIndex = 0;
+    let keywordMatch;
+    keywordRegex.lastIndex = 0; // Reset regex state for each segment
+
+    while ((keywordMatch = keywordRegex.exec(segment)) !== null) {
+      if (keywordMatch.index > segmentLastIndex) {
+        segmentElements.push(segment.substring(segmentLastIndex, keywordMatch.index));
+      }
+      
+      const matchedWord = keywordMatch[0];
+      const lowerCaseWord = matchedWord.toLowerCase();
+      let type: 'positive' | 'negative' | 'neutral' = 'neutral';
+      if (positiveKeywordsList.includes(lowerCaseWord)) type = 'positive';
+      else if (negativeKeywordsList.includes(lowerCaseWord)) type = 'negative';
+
+      segmentElements.push(
+        <HighlightedKeyword key={`${segmentKeyPrefix}-keyword-${keywordMatch.index}`} type={type}>
+          {matchedWord}
+        </HighlightedKeyword>
+      );
+      segmentLastIndex = keywordRegex.lastIndex;
+    }
+    if (segmentLastIndex < segment.length) {
+      segmentElements.push(segment.substring(segmentLastIndex));
+    }
+    // Wrap raw string parts in Fragment to assign keys if needed, or handle as is.
+    // React can handle arrays of mixed strings and components.
+    // Keys for HighlightedKeyword are important.
+    return segmentElements.map((el, i) => <React.Fragment key={`${segmentKeyPrefix}-frag-${i}`}>{el}</React.Fragment>);
+  };
+
+  while ((match = moveRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      elements.push(...processSegment(text.substring(lastIndex, match.index), `text-${lastIndex}`));
+    }
+    elements.push(
+      <HighlightedMove key={`move-${match.index}`}>
+        {match[0]}
+      </HighlightedMove>
+    );
+    lastIndex = moveRegex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    elements.push(...processSegment(text.substring(lastIndex), `text-${lastIndex}`));
+  }
+  
+  return <>{elements.map((el, idx) => <React.Fragment key={`final-${idx}`}>{el}</React.Fragment>)}</>;
+};
+
 
 interface AiTutorPanelProps {
   hint?: { move?: string; explanation: string; type: 'vague' | 'specific' };
@@ -63,7 +155,7 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
                 bgColorClass="bg-secondary/30"
                 borderColorClass="border-secondary/50"
               >
-                <p className="whitespace-pre-wrap">{hint.explanation}</p>
+                <p className="whitespace-pre-wrap">{parseAndHighlightText(hint.explanation)}</p>
               </FeedbackBlock>
             )}
 
@@ -78,7 +170,7 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
                 <div className="flex items-center gap-2 mb-1">
                     <Badge variant="default" className="bg-accent text-accent-foreground text-base px-2.5 py-1">{hint.move}</Badge>
                 </div>
-                <p className="whitespace-pre-wrap">{hint.explanation}</p>
+                <p className="whitespace-pre-wrap">{parseAndHighlightText(hint.explanation)}</p>
               </FeedbackBlock>
             )}
             
@@ -92,7 +184,7 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
                     bgColorClass="bg-primary/5"
                     borderColorClass="border-primary/20"
                   >
-                    <p className="whitespace-pre-wrap">{playerMoveAnalysis.playerMoveEvaluation}</p>
+                    <p className="whitespace-pre-wrap">{parseAndHighlightText(playerMoveAnalysis.playerMoveEvaluation)}</p>
                   </FeedbackBlock>
                 )}
                 {playerMoveAnalysis.betterPlayerMoveSuggestions && playerMoveAnalysis.betterPlayerMoveSuggestions.length > 0 && (
@@ -107,7 +199,7 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
                       {playerMoveAnalysis.betterPlayerMoveSuggestions.map((s, i) => (
                         <div key={i} className="p-2.5 bg-accent/10 rounded-md border border-accent/20 shadow-sm">
                           <Badge variant="default" className="bg-accent text-accent-foreground mr-2 mb-1 text-sm px-2 py-0.5">{s.move}</Badge>
-                          <p className="text-sm whitespace-pre-wrap leading-snug">{s.explanation}</p>
+                          <div className="text-sm whitespace-pre-wrap leading-snug">{parseAndHighlightText(s.explanation)}</div>
                         </div>
                       ))}
                     </div>
@@ -121,7 +213,7 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
                     bgColorClass="bg-muted/50"
                     borderColorClass="border-muted"
                   >
-                      <p className="whitespace-pre-wrap">{playerMoveAnalysis.generalBoardAnalysis}</p>
+                      <p className="whitespace-pre-wrap">{parseAndHighlightText(playerMoveAnalysis.generalBoardAnalysis)}</p>
                    </FeedbackBlock>
                 )}
                 {playerMoveAnalysis.suggestedMovesForCurrentTurn && playerMoveAnalysis.suggestedMovesForCurrentTurn.length > 0 && (
@@ -136,7 +228,7 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
                     {playerMoveAnalysis.suggestedMovesForCurrentTurn.map((s, i) => (
                        <div key={i} className="p-2.5 bg-secondary/30 rounded-md border border-secondary/50 shadow-sm">
                          <Badge variant="secondary" className="mr-2 mb-1 text-sm px-2 py-0.5">{s.move}</Badge>
-                         <p className="text-sm whitespace-pre-wrap leading-snug">{s.explanation}</p>
+                         <div className="text-sm whitespace-pre-wrap leading-snug">{parseAndHighlightText(s.explanation)}</div>
                        </div>
                     ))}
                     </div>
@@ -156,7 +248,7 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
                 <div className="flex items-center gap-2 mb-1">
                   <Badge variant="default" className="bg-accent text-accent-foreground text-base px-2.5 py-1">{aiMoveExplanation.move}</Badge>
                 </div>
-                <p className="whitespace-pre-wrap">{aiMoveExplanation.explanation}</p>
+                <p className="whitespace-pre-wrap">{parseAndHighlightText(aiMoveExplanation.explanation)}</p>
               </FeedbackBlock>
             )}
 
