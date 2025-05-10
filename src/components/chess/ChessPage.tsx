@@ -8,10 +8,6 @@ import MoveHistory from './MoveHistory';
 import AiTutorPanel from './AiTutorPanel';
 import GameStatus from './GameStatus';
 import PromotionDialog from './PromotionDialog';
-// Dialog related imports are removed as AiTutorPanel is now inline
-// import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-// import { Button } from '@/components/ui/button'; // Button might still be used elsewhere
-// import { Bot, MessageSquareText } from 'lucide-react'; // Bot icon is in AiTutorPanel
 
 import {
   createInitialBoard,
@@ -33,7 +29,8 @@ import { explainMoveHint } from '@/ai/flows/move-hint-explanation';
 import { getVagueChessHint } from '@/ai/flows/vague-chess-hint';
 import { aiTutorAnalysis, AiTutorAnalysisOutput } from '@/ai/flows/ai-tutor-analysis';
 import { useToast } from '@/hooks/use-toast';
-// import { useIsMobile } from '@/hooks/use-mobile'; // Not strictly needed for this logic anymore if panel is always inline
+import { parseAndHighlightText } from '@/lib/text-parser'; // Import centralized parser
+
 
 const ChessPage: React.FC = () => {
   const [board, setBoard] = useState<Board>(createInitialBoard());
@@ -45,7 +42,7 @@ const ChessPage: React.FC = () => {
   
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [validMoves, setValidMoves] = useState<Square[]>([]);
-  const [moveHistory, setMoveHistory] = useState<string[]>([]);
+  const [moveHistory, setMoveHistory] = useState<string[]>(moveHistory => []);
   const [gameStatusText, setGameStatusText] = useState<string>("White's Turn");
   const [isCheck, setIsCheck] = useState<boolean>(false);
   const [isCheckmate, setIsCheckmate] = useState<boolean>(false);
@@ -54,12 +51,12 @@ const ChessPage: React.FC = () => {
   const [kingInCheckSquare, setKingInCheckSquare] = useState<Square | null>(null);
 
   const [difficulty, setDifficulty] = useState<Difficulty>('beginner');
-  const [playerColor] = useState<PieceColor>('w'); // Player is always White for now
+  const [playerColor] = useState<PieceColor>('w'); 
   const aiColor = playerColor === 'w' ? 'b' : 'w';
 
   const [isLoadingAi, setIsLoadingAi] = useState<boolean>(false);
   const [aiHint, setAiHint] = useState<{ move?: string; explanation: string; type: 'vague' | 'specific' } | undefined>(undefined);
-  const [hintLevel, setHintLevel] = useState<0 | 1 | 2>(0); // 0: none, 1: vague requested, 2: specific requested/shown
+  const [hintLevel, setHintLevel] = useState<0 | 1 | 2>(0); 
   const [highlightedHintSquares, setHighlightedHintSquares] = useState<{ from: Square; to: Square } | null>(null);
   const [isFetchingVagueHint, setIsFetchingVagueHint] = useState<boolean>(false);
   const [isFetchingSpecificHint, setIsFetchingSpecificHint] = useState<boolean>(false);
@@ -73,10 +70,7 @@ const ChessPage: React.FC = () => {
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
 
   const { toast } = useToast();
-  // const isMobileView = useIsMobile(); // No longer needed to conditionally render AI Tutor Dialog
-  // const [isAiTutorDialogOpen, setIsAiTutorDialogOpen] = useState(false); // Dialog removed
-
-
+  
   const resetGame = useCallback(() => {
     const initial = fenToBoard(INITIAL_FEN);
     setBoard(initial.board);
@@ -177,18 +171,42 @@ const ChessPage: React.FC = () => {
       });
       setPlayerMoveAnalysisOutput(result);
 
-      let moveQualityMessage = "Analysis complete.";
+      const descriptionElements: React.ReactNode[] = [];
+      let moveQualityText = "Analysis available.";
+
       if (result.playerMoveEvaluation) {
         const qualityMatch = result.playerMoveEvaluation.match(/\*\*(Excellent|Good|Inaccuracy|Mistake|Blunder)\*\*/i);
         if (qualityMatch && qualityMatch[1]) {
-          moveQualityMessage = `Move Quality: ${qualityMatch[1]}.`;
+          moveQualityText = `Move Quality: ${qualityMatch[1]}.`;
+          descriptionElements.push(<p key="quality" className="text-sm">{parseAndHighlightText(`**${qualityMatch[1]}** move.`)}</p>);
+        } else {
+           // If no direct quality match, show a snippet of the evaluation
+           descriptionElements.push(<div key="eval-snippet" className="text-xs line-clamp-2">{parseAndHighlightText(result.playerMoveEvaluation.substring(0,100) + "...")}</div>);
         }
       }
+      
+      if (result.betterPlayerMoveSuggestions && result.betterPlayerMoveSuggestions.length > 0) {
+        const suggestion = result.betterPlayerMoveSuggestions[0];
+        descriptionElements.push(
+            <p key="better-move" className="mt-1 text-xs">
+                {parseAndHighlightText(`Consider: **${suggestion.move}**. ${suggestion.explanation.substring(0, 70)}...`)}
+            </p>
+        );
+      } else if (result.generalBoardAnalysis && (!result.playerMoveEvaluation || (!result.playerMoveEvaluation.toLowerCase().includes("excellent") && !result.playerMoveEvaluation.toLowerCase().includes("good")))) {
+         descriptionElements.push(
+            <p key="board-hint" className="mt-1 text-xs">
+                {parseAndHighlightText(`Board: ${result.generalBoardAnalysis.substring(0, 80)}...`)}
+            </p>
+        );
+      }
+      descriptionElements.push(<p key="details" className="mt-1.5 text-xs italic">Full analysis in AI Tutor panel.</p>);
+
+
       toast({ 
         title: "Your Move Analyzed", 
-        description: `${moveQualityMessage} See AI Tutor panel for full details.`
+        description: <div className="space-y-0.5">{descriptionElements}</div>,
+        duration: 10000, 
       });
-      // Dialog removed, so no need to open it
     } catch (error) {
       console.error("Error getting player move analysis:", error);
       toast({ title: "Error", description: "Could not fetch player move analysis.", variant: "destructive" });
@@ -324,12 +342,15 @@ const ChessPage: React.FC = () => {
       });
       setAiMoveExplanationOutput({ move: aiMoveNotationValue, explanation: result.explanation });
       
-      const firstSentence = result.explanation.split('.')[0] + '.';
       toast({ 
         title: `AI Played: ${aiMoveNotationValue}`, 
-        description: `${firstSentence} (See Tutor panel for more)` 
+        description: (
+            <div className="text-xs line-clamp-3">
+                 {parseAndHighlightText(result.explanation)}
+            </div>
+        ),
+        duration: 8000, 
       });
-      // Dialog removed, so no need to open it
     } catch (error) {
       console.error("Error getting AI move explanation:", error);
       toast({ title: "Error", description: "Could not fetch AI move explanation.", variant: "destructive" });
@@ -423,8 +444,11 @@ const ChessPage: React.FC = () => {
         });
         setAiHint({ explanation: result.vagueHint, type: 'vague' });
         setHintLevel(1);
-        toast({ title: "General Tip Provided", description: result.vagueHint });
-        // Dialog removed, so no need to open it
+        toast({ 
+            title: "General Tip", 
+            description: <p className="text-sm">{parseAndHighlightText(result.vagueHint)}</p>,
+            duration: 5000 
+        });
       } catch (error) {
         console.error("Error getting vague AI hint:", error);
         toast({ title: "Error", description: "Could not fetch general tip.", variant: "destructive" });
@@ -475,12 +499,11 @@ const ChessPage: React.FC = () => {
         setHighlightedHintSquares({ from: hintMove.from, to: hintMove.to });
         setHintLevel(2);
         
-        const firstSentenceOfExplanation = result.explanation.split('.')[0] + '.';
         toast({ 
             title: `Specific Hint: ${algebraicNotation}`, 
-            description: `${firstSentenceOfExplanation} (See Tutor panel for full explanation)`
+            description: <div className="text-xs line-clamp-3">{parseAndHighlightText(result.explanation)}</div>,
+            duration: 8000
         });
-        // Dialog removed, so no need to open it
       } catch (error) {
         console.error("Error getting specific AI hint:", error);
         toast({ title: "Error", description: "Could not fetch specific AI hint.", variant: "destructive" });
