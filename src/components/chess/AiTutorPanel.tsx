@@ -70,55 +70,47 @@ const processKeywordsInSegment = (segment: string, keyPrefix: string): React.Rea
   return segmentElements.map((el, i) => <React.Fragment key={`${keyPrefix}-frag-${i}`}>{el}</React.Fragment>);
 };
 
-const parseTextRecursively = (text: string, keyPrefix: string, isAlreadyBold: boolean = false): React.ReactNode[] => {
-  if (!text) return [];
+const parseTextRecursively = (text: string, keyPrefix: string, depth = 0): React.ReactNode[] => {
+  if (!text || depth > 10) return [text]; // Max depth to prevent infinite loops with malformed input
 
   const elements: React.ReactNode[] = [];
+  let lastIndex = 0;
   
-  if (!isAlreadyBold) {
-    boldRegex.lastIndex = 0;
-    let lastIndex = 0;
-    let match;
+  // Combine bold and move regex matching to avoid nested recursion issues
+  // Create a combined regex that captures either bold or move
+  const combinedRegex = new RegExp(`(${boldRegex.source})|(${moveRegex.source})`, 'g');
+  let match;
+  combinedRegex.lastIndex = 0;
 
-    while ((match = boldRegex.exec(text)) !== null) {
-      if (match.index > lastIndex) {
-        // Corrected: Pass `true` for isAlreadyBold to process this segment for moves/keywords
-        elements.push(...parseTextRecursively(text.substring(lastIndex, match.index), `${keyPrefix}-nonbold-${lastIndex}`, true));
-      }
+  while ((match = combinedRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      // Process keywords in the segment before the current match
+      elements.push(...processKeywordsInSegment(text.substring(lastIndex, match.index), `${keyPrefix}-kwseg-${lastIndex}`));
+    }
+
+    const boldContent = match[2]; // Captured content of **bold**
+    const moveContent = match[3]; // Captured content of move
+
+    if (boldContent) {
       elements.push(
         <strong key={`${keyPrefix}-bold-${match.index}`} className="font-bold">
-          {/* Content inside bold tags is processed for moves/keywords */}
-          {parseTextRecursively(match[1], `${keyPrefix}-boldcontent-${match.index}`, true)}
+          {/* Recursively parse content within bold tags, specifically for moves/keywords now */}
+          {parseTextRecursively(boldContent, `${keyPrefix}-boldcontent-${match.index}`, depth + 1)}
         </strong>
       );
-      lastIndex = boldRegex.lastIndex;
+    } else if (moveContent) {
+      elements.push(
+        <HighlightedMove key={`${keyPrefix}-move-${match.index}`}>
+          {moveContent}
+        </HighlightedMove>
+      );
     }
-    if (lastIndex < text.length) {
-      // Corrected: Pass `true` for isAlreadyBold to process this segment for moves/keywords
-      elements.push(...parseTextRecursively(text.substring(lastIndex), `${keyPrefix}-nonbold-${lastIndex}`, true));
-    }
-    return elements.map((el, i) => <React.Fragment key={`${keyPrefix}-mainfrag-${i}`}>{el}</React.Fragment>);
+    lastIndex = combinedRegex.lastIndex;
   }
 
-  // If isAlreadyBold is true (or no more bold markers were found in the segment from the !isAlreadyBold path),
-  // process for moves and keywords.
-  moveRegex.lastIndex = 0;
-  let lastIndexForMoves = 0; // Use a different lastIndex variable to avoid conflict
-  let moveMatch;
-
-  while ((moveMatch = moveRegex.exec(text)) !== null) {
-    if (moveMatch.index > lastIndexForMoves) {
-      elements.push(...processKeywordsInSegment(text.substring(lastIndexForMoves, moveMatch.index), `${keyPrefix}-kwseg-${lastIndexForMoves}`));
-    }
-    elements.push(
-      <HighlightedMove key={`${keyPrefix}-move-${moveMatch.index}`}>
-        {moveMatch[0]}
-      </HighlightedMove>
-    );
-    lastIndexForMoves = moveRegex.lastIndex;
-  }
-  if (lastIndexForMoves < text.length) {
-    elements.push(...processKeywordsInSegment(text.substring(lastIndexForMoves), `${keyPrefix}-kwseg-${lastIndexForMoves}`));
+  if (lastIndex < text.length) {
+    // Process keywords in the remaining segment
+    elements.push(...processKeywordsInSegment(text.substring(lastIndex), `${keyPrefix}-kwseg-${lastIndex}`));
   }
   
   return elements.map((el, i) => <React.Fragment key={`${keyPrefix}-subfrag-${i}`}>{el}</React.Fragment>);
@@ -146,12 +138,12 @@ const FeedbackBlock: React.FC<{
   borderColorClass?: string;
   children: React.ReactNode;
 }> = ({ icon: Icon, title, titleColorClass = "text-foreground", bgColorClass = "bg-background", borderColorClass = "border-border", children }) => (
-  <div className={cn("p-4 rounded-lg border space-y-3 shadow-sm", bgColorClass, borderColorClass)}>
-    <div className="flex items-start space-x-3">
-      <Icon className={cn("h-6 w-6 shrink-0 mt-0.5", titleColorClass)} />
-      <h3 className={cn("font-semibold text-lg", titleColorClass)}>{title}</h3>
+  <div className={cn("p-3 sm:p-4 rounded-lg border space-y-2 sm:space-y-3 shadow-sm", bgColorClass, borderColorClass)}>
+    <div className="flex items-start space-x-2 sm:space-x-3">
+      <Icon className={cn("h-5 w-5 sm:h-6 sm:w-6 shrink-0 mt-0.5", titleColorClass)} />
+      <h3 className={cn("font-semibold text-base sm:text-lg", titleColorClass)}>{title}</h3>
     </div>
-    <div className="pl-[calc(1.5rem+0.75rem)] text-sm leading-relaxed space-y-2"> {/* 1.5rem for icon, 0.75rem for space-x-3 */}
+    <div className="pl-[calc(theme(spacing.5)_+_theme(spacing.2))] sm:pl-[calc(theme(spacing.6)_+_theme(spacing.3))] text-sm leading-relaxed space-y-1.5 sm:space-y-2">
       {children}
     </div>
   </div>
@@ -162,19 +154,19 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
   
   return (
     <Card className="h-full shadow-md">
-      <CardHeader className="py-4 px-4">
-        <CardTitle className="text-xl flex items-center">
-          <Bot className="mr-2 h-6 w-6 text-primary" />
+      <CardHeader className="py-3 px-3 sm:py-4 sm:px-4">
+        <CardTitle className="text-lg sm:text-xl flex items-center">
+          <Bot className="mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary" />
           AI Tutor
         </CardTitle>
       </CardHeader>
-      <CardContent className="h-[calc(100%-4.5rem)] pb-3 px-2">
-        <ScrollArea className="h-full w-full rounded-md border p-3">
-          <div className="space-y-4">
+      <CardContent className="h-[calc(100%-3.25rem)] sm:h-[calc(100%-3.75rem)] pb-2 px-1 sm:pb-3 sm:px-2"> {/* Adjusted height based on header */}
+        <ScrollArea className="h-full w-full rounded-md border p-2 sm:p-3">
+          <div className="space-y-3 sm:space-y-4">
             {isLoading && (
-              <div className="flex items-center justify-center space-x-2 text-base text-muted-foreground py-8">
-                <Loader className="h-6 w-6 animate-spin text-primary" />
-                <span>AI is thinking... Please wait.</span>
+              <div className="flex items-center justify-center space-x-2 text-sm sm:text-base text-muted-foreground py-8">
+                <Loader className="h-5 w-5 sm:h-6 sm:w-6 animate-spin text-primary" />
+                <span>AI is thinking...</span>
               </div>
             )}
             
@@ -199,7 +191,7 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
                 borderColorClass="border-accent/30"
               >
                 <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="default" className="bg-accent text-accent-foreground text-base px-2.5 py-1">{hint.move}</Badge>
+                    <Badge variant="default" className="bg-accent text-accent-foreground text-sm sm:text-base px-2 sm:px-2.5 py-0.5 sm:py-1">{hint.move}</Badge>
                 </div>
                 <p className="whitespace-pre-wrap">{parseAndHighlightText(hint.explanation)}</p>
               </FeedbackBlock>
@@ -226,11 +218,11 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
                     bgColorClass="bg-accent/5"
                     borderColorClass="border-accent/20"
                   >
-                    <div className="space-y-3">
+                    <div className="space-y-2.5 sm:space-y-3">
                       {playerMoveAnalysis.betterPlayerMoveSuggestions.map((s, i) => (
-                        <div key={i} className="p-2.5 bg-accent/10 rounded-md border border-accent/20 shadow-sm">
-                          <Badge variant="default" className="bg-accent text-accent-foreground mr-2 mb-1 text-sm px-2 py-0.5">{s.move}</Badge>
-                          <div className="text-sm whitespace-pre-wrap leading-snug">{parseAndHighlightText(s.explanation)}</div>
+                        <div key={i} className="p-2 sm:p-2.5 bg-accent/10 rounded-md border border-accent/20 shadow-sm">
+                          <Badge variant="default" className="bg-accent text-accent-foreground mr-2 mb-1 text-xs sm:text-sm px-1.5 sm:px-2 py-0.5">{s.move}</Badge>
+                          <div className="text-xs sm:text-sm whitespace-pre-wrap leading-snug">{parseAndHighlightText(s.explanation)}</div>
                         </div>
                       ))}
                     </div>
@@ -255,11 +247,11 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
                     bgColorClass="bg-secondary/20"
                     borderColorClass="border-secondary/40"
                   >
-                    <div className="space-y-3">
+                    <div className="space-y-2.5 sm:space-y-3">
                     {playerMoveAnalysis.suggestedMovesForCurrentTurn.map((s, i) => (
-                       <div key={i} className="p-2.5 bg-secondary/30 rounded-md border border-secondary/50 shadow-sm">
-                         <Badge variant="secondary" className="mr-2 mb-1 text-sm px-2 py-0.5">{s.move}</Badge>
-                         <div className="text-sm whitespace-pre-wrap leading-snug">{parseAndHighlightText(s.explanation)}</div>
+                       <div key={i} className="p-2 sm:p-2.5 bg-secondary/30 rounded-md border border-secondary/50 shadow-sm">
+                         <Badge variant="secondary" className="mr-2 mb-1 text-xs sm:text-sm px-1.5 sm:px-2 py-0.5">{s.move}</Badge>
+                         <div className="text-xs sm:text-sm whitespace-pre-wrap leading-snug">{parseAndHighlightText(s.explanation)}</div>
                        </div>
                     ))}
                     </div>
@@ -277,15 +269,15 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
                 borderColorClass="border-accent/30"
                >
                 <div className="flex items-center gap-2 mb-1">
-                  <Badge variant="default" className="bg-accent text-accent-foreground text-base px-2.5 py-1">{aiMoveExplanation.move}</Badge>
+                  <Badge variant="default" className="bg-accent text-accent-foreground text-sm sm:text-base px-2 sm:px-2.5 py-0.5 sm:py-1">{aiMoveExplanation.move}</Badge>
                 </div>
                 <p className="whitespace-pre-wrap">{parseAndHighlightText(aiMoveExplanation.explanation)}</p>
               </FeedbackBlock>
             )}
 
             {!isLoading && !hint && !playerMoveAnalysis && !aiMoveExplanation && (
-              <div className="flex flex-col items-center justify-center text-center py-10 text-base text-muted-foreground space-y-4">
-                <HelpCircle className="h-12 w-12 text-primary/70" />
+              <div className="flex flex-col items-center justify-center text-center py-8 sm:py-10 text-sm sm:text-base text-muted-foreground space-y-3 sm:space-y-4">
+                <HelpCircle className="h-10 w-10 sm:h-12 sm:w-12 text-primary/70" />
                 <p className="max-w-xs">Play a move or request a hint to get personalized feedback from the AI Tutor.</p>
               </div>
             )}

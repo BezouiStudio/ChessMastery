@@ -90,7 +90,7 @@ const ChessboardComponent: React.FC<ChessboardProps> = ({
   };
 
   return (
-    <div className="w-full max-w-[calc(100vh-200px)] sm:max-w-[calc(100vh-250px)] md:max-w-[calc(min(600px,100vw-22rem-2rem-8px))] lg:max-w-[calc(min(700px,100vw-24rem-2.5rem-8px))] aspect-square rounded-lg overflow-hidden shadow-2xl border-4 border-card">
+    <div className="w-full max-w-xs sm:max-w-sm md:max-w-full aspect-square rounded-lg overflow-hidden shadow-2xl border-4 border-card mx-auto md:mx-0">
         <div className="grid grid-cols-8 w-full h-full">
             {renderSquares()}
         </div>

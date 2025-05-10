@@ -467,9 +467,9 @@ const ChessPage: React.FC = () => {
 
   return (
     <div className="w-full max-w-6xl mx-auto p-2 md:p-4">
-      <header className="mb-4 md:mb-6 text-center">
-        <h1 className="text-3xl md:text-4xl font-bold text-primary">ChessMastery</h1>
-        <p className="text-muted-foreground">Hone your chess skills with AI guidance.</p>
+      <header className="mb-2 md:mb-4 text-center">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary">ChessMastery</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">Hone your chess skills with AI guidance.</p>
       </header>
 
       <GameStatus 
@@ -481,8 +481,8 @@ const ChessPage: React.FC = () => {
         winner={winner}
       />
 
-      <div className="flex flex-col md:flex-row gap-4 md:gap-6 lg:gap-10 mt-4">
-        <div className="w-full md:flex-1 flex justify-center items-start p-0">
+      <div className="flex flex-col md:flex-row gap-4 md:gap-6 lg:gap-10 mt-3 md:mt-4">
+        <div className="w-full md:flex-shrink-0 md:flex-grow-0 md:basis-[calc(min(600px,100vw-22rem-2rem-8px))] lg:basis-[calc(min(700px,100vw-24rem-2.5rem-8px))] flex justify-center items-start">
           <ChessboardComponent
             board={board}
             onSquareClick={handleSquareClick}
@@ -496,7 +496,7 @@ const ChessPage: React.FC = () => {
           />
         </div>
 
-        <aside className="w-full md:w-[22rem] lg:w-[24rem] flex flex-col gap-4">
+        <aside className="w-full md:w-[22rem] lg:w-[24rem] flex flex-col gap-3 md:gap-4">
           <GameControls
             onNewGame={resetGame}
             onHint={handleHint}
@@ -507,7 +507,7 @@ const ChessPage: React.FC = () => {
             isGameOver={isCheckmate || isStalemate}
             hintLevel={hintLevel}
           />
-          <div className="flex-grow min-h-[250px] md:min-h-[300px]">
+          <div className="flex-grow min-h-[200px] sm:min-h-[250px] md:min-h-[300px]">
             <AiTutorPanel 
               hint={aiHint} 
               playerMoveAnalysis={playerMoveAnalysisOutput}
@@ -515,7 +515,7 @@ const ChessPage: React.FC = () => {
               isLoading={isLoadingAi} 
             />
           </div>
-          <div className="flex-grow min-h-[150px] md:min-h-[200px]">
+          <div className="flex-grow min-h-[120px] sm:min-h-[150px] md:min-h-[200px]">
             <MoveHistory moves={moveHistory} />
           </div>
         </aside>

@@ -38,31 +38,31 @@ const GameControls: React.FC<GameControlsProps> = ({
 
   return (
     <Card className="shadow-lg rounded-lg">
-      <CardHeader className="pb-3 pt-4 px-4">
-        <CardTitle className="text-xl font-semibold">Game Controls</CardTitle>
+      <CardHeader className="pb-2 pt-3 px-3 sm:pb-3 sm:pt-4 sm:px-4">
+        <CardTitle className="text-lg sm:text-xl font-semibold">Game Controls</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 px-4 pb-4">
-        <Button onClick={onNewGame} className="w-full" variant="outline">
+      <CardContent className="space-y-2 px-3 pb-3 sm:space-y-3 sm:px-4 sm:pb-4">
+        <Button onClick={onNewGame} className="w-full text-xs sm:text-sm" variant="outline">
           <RotateCcw className="mr-2 h-4 w-4" /> New Game
         </Button>
         <Button 
           onClick={onHint} 
           disabled={isLoadingHint || !isPlayerTurn || isGameOver} 
-          className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+          className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-xs sm:text-sm"
         >
           <Lightbulb className="mr-2 h-4 w-4" /> {isLoadingHint ? 'Thinking...' : hintButtonText}
         </Button>
         
-        <div className="space-y-1.5">
-          <Label htmlFor="difficulty-select" className="text-sm font-medium">AI Difficulty</Label>
+        <div className="space-y-1 sm:space-y-1.5">
+          <Label htmlFor="difficulty-select" className="text-xs sm:text-sm font-medium">AI Difficulty</Label>
           <Select value={difficulty} onValueChange={(value) => onDifficultyChange(value as Difficulty)}>
-            <SelectTrigger id="difficulty-select" className="w-full">
+            <SelectTrigger id="difficulty-select" className="w-full text-xs sm:text-sm">
               <SelectValue placeholder="Select difficulty" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="beginner">Beginner</SelectItem>
-              <SelectItem value="intermediate">Intermediate</SelectItem>
-              <SelectItem value="advanced">Advanced</SelectItem>
+              <SelectItem value="beginner" className="text-xs sm:text-sm">Beginner</SelectItem>
+              <SelectItem value="intermediate" className="text-xs sm:text-sm">Intermediate</SelectItem>
+              <SelectItem value="advanced" className="text-xs sm:text-sm">Advanced</SelectItem>
             </SelectContent>
           </Select>
         </div>

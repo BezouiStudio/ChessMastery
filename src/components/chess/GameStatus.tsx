@@ -37,11 +37,11 @@ const GameStatus: React.FC<GameStatusProps> = ({
 
   return (
     <div className={cn(
-        "p-3 rounded-lg border flex items-center space-x-3 shadow-md",
+        "p-2 sm:p-3 rounded-lg border flex items-center space-x-2 sm:space-x-3 shadow-md",
         alertClass
       )}>
-      <IconComponent className="h-6 w-6" />
-      <p className="text-sm font-medium">{statusText}</p>
+      <IconComponent className="h-5 w-5 sm:h-6 sm:w-6" />
+      <p className="text-xs sm:text-sm font-medium">{statusText}</p>
     </div>
   );
 };

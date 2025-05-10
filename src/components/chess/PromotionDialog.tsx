@@ -17,20 +17,20 @@ const PromotionDialog: React.FC<PromotionDialogProps> = ({ isOpen, onSelectPiece
 
   return (
     <Dialog open={isOpen} onOpenChange={() => { /* Controlled externally */ }}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[380px] p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle>Promote Pawn</DialogTitle>
-          <DialogDescription>Select a piece to promote your pawn to.</DialogDescription>
+          <DialogTitle className="text-base sm:text-lg">Promote Pawn</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">Select a piece to promote your pawn to.</DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-4 gap-4 py-4">
+        <div className="grid grid-cols-4 gap-2 sm:gap-4 py-3 sm:py-4">
           {promotionPieces.map((symbol) => (
             <Button
               key={symbol}
               variant="outline"
-              className="h-20 w-20 text-4xl p-0 flex items-center justify-center"
+              className="h-16 w-16 sm:h-20 sm:w-20 text-4xl p-0 flex items-center justify-center"
               onClick={() => onSelectPiece(symbol)}
             >
-              <PieceComponent piece={{ symbol, color: playerColor }} size="text-5xl" />
+              <PieceComponent piece={{ symbol, color: playerColor }} size="text-4xl sm:text-5xl" />
             </Button>
           ))}
         </div>
