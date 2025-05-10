@@ -65,10 +65,16 @@ const ChessboardComponent: React.FC<ChessboardProps> = ({
           >
             {piece && <PieceComponent piece={piece} />}
             {isPossibleMove && (
-              <div className={cn(
-                "absolute inset-0 flex items-center justify-center pointer-events-none",
-                piece ? "bg-highlight-move/40 rounded-full w-3/4 h-3/4 opacity-90" : "bg-highlight-move/25 rounded-full w-1/2 h-1/2 opacity-70"
-              )} />
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div
+                  className={cn(
+                    "rounded-full",
+                    piece 
+                      ? "bg-highlight-move/40 w-3/4 h-3/4 opacity-90" 
+                      : "bg-highlight-move/25 w-1/2 h-1/2 opacity-70"
+                  )}
+                />
+              </div>
             )}
             {(isLastMoveOrigin || isLastMoveTarget) && !isHintedFrom && !isHintedTo && ( // Don't show last move if it's also a hint square to avoid color clash
               <div className="absolute inset-0 bg-highlight-move/20 pointer-events-none" />
@@ -84,7 +90,7 @@ const ChessboardComponent: React.FC<ChessboardProps> = ({
   };
 
   return (
-    <div className="w-full max-w-[calc(100vh-200px)] sm:max-w-[calc(100vh-250px)] md:max-w-[calc(min(600px,100vw-24rem-2rem))] lg:max-w-[calc(min(700px,100vw-26rem-2.5rem))] aspect-square rounded-lg overflow-hidden shadow-2xl border-4 border-card">
+    <div className="w-full max-w-[calc(100vh-200px)] sm:max-w-[calc(100vh-250px)] md:max-w-[calc(min(600px,100vw-22rem-2rem-8px))] lg:max-w-[calc(min(700px,100vw-24rem-2.5rem-8px))] aspect-square rounded-lg overflow-hidden shadow-2xl border-4 border-card">
         <div className="grid grid-cols-8 w-full h-full">
             {renderSquares()}
         </div>
