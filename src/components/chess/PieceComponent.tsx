@@ -13,8 +13,8 @@ const PieceComponent: React.FC<PieceProps> = ({ piece, size }) => {
   const pieceChar = UNICODE_PIECES[piece.color][piece.symbol];
   const colorClass = piece.color === 'w' ? 'text-piece-light-color' : 'text-piece-dark-color';
   
-  // Default responsive size. Can be overridden by `size` prop.
-  const defaultSize = "text-[7vmin] sm:text-[6.5vmin] md:text-[6vmin] lg:text-[5.5vmin] xl:text-[4.5rem] leading-none";
+  // Adjusted responsive sizes for better mobile visibility
+  const defaultSize = "text-[9vmin] sm:text-[8vmin] md:text-[7vmin] lg:text-[6vmin] xl:text-[5rem] leading-none";
 
 
   return (
@@ -31,4 +31,3 @@ const PieceComponent: React.FC<PieceProps> = ({ piece, size }) => {
 };
 
 export default PieceComponent;
-
