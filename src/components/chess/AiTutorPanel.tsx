@@ -30,46 +30,25 @@ const HighlightedKeyword: React.FC<{ children: React.ReactNode; type: 'positive'
   return <span className={className}>{children}</span>;
 };
 
-const processBoldTextSegment = (text: string, keyPrefix: string): React.ReactNode[] => {
-  const boldRegex = /\*\*(.*?)\*\*/g;
-  const elements: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let boldMatch;
-  boldRegex.lastIndex = 0; // Reset regex state
-
-  while ((boldMatch = boldRegex.exec(text)) !== null) {
-    if (boldMatch.index > lastIndex) {
-      elements.push(text.substring(lastIndex, boldMatch.index));
-    }
-    elements.push(
-      <strong key={`${keyPrefix}-bold-${boldMatch.index}`} className="font-bold">
-        {boldMatch[1]}
-      </strong>
-    );
-    lastIndex = boldRegex.lastIndex;
-  }
-  if (lastIndex < text.length) {
-    elements.push(text.substring(lastIndex));
-  }
-  return elements.map((el, i) => <React.Fragment key={`${keyPrefix}-sfrag-${i}`}>{el}</React.Fragment>);
-};
-
 const positiveKeywordsList = ['strong', 'standard', 'well-regarded', 'excellent', 'good', 'advantage', 'control', 'develop', 'initiative', 'king safety', 'pin', 'fork', 'skewer', 'discovered attack', 'key', 'critical', 'opportunity', 'improving', 'better', 'solid', 'active'];
 const negativeKeywordsList = ['inaccuracy', 'mistake', 'blunder', 'disadvantage', 'threat', 'weakness', 'poor', 'passive', 'exposed', 'unsafe'];
 const neutralKeywordsList = ['center', 'queen', 'bishop', 'rook', 'knight', 'pawn', 'king', 'kingside', 'queenside', 'tempo', 'material', 'pawn structure', 'opening', 'middlegame', 'endgame', 'tactic', 'strategy', 'positional'];
 
 const allKeywords = [...positiveKeywordsList, ...negativeKeywordsList, ...neutralKeywordsList];
 const keywordRegex = new RegExp(`\\b(${allKeywords.join('|')})\\b`, 'gi');
+const moveRegex = /\b([PNBRQK]?[a-h]?[1-8]?x?[a-h][1-8](?:=[PNBRQK])?[+#]?|O-O(?:-O)?)\b/g;
+const boldRegex = /\*\*(.*?)\*\*/g;
 
-const processSegment = (segment: string, segmentKeyPrefix: string): React.ReactNode[] => {
+
+const processKeywordsInSegment = (segment: string, keyPrefix: string): React.ReactNode[] => {
   const segmentElements: React.ReactNode[] = [];
   let segmentLastIndex = 0;
   let keywordMatch;
-  keywordRegex.lastIndex = 0; // Reset regex state for each segment
+  keywordRegex.lastIndex = 0; 
 
   while ((keywordMatch = keywordRegex.exec(segment)) !== null) {
     if (keywordMatch.index > segmentLastIndex) {
-      segmentElements.push(...processBoldTextSegment(segment.substring(segmentLastIndex, keywordMatch.index), `${segmentKeyPrefix}-prekw-${segmentLastIndex}`));
+      segmentElements.push(segment.substring(segmentLastIndex, keywordMatch.index));
     }
     
     const matchedWord = keywordMatch[0];
@@ -79,45 +58,71 @@ const processSegment = (segment: string, segmentKeyPrefix: string): React.ReactN
     else if (negativeKeywordsList.includes(lowerCaseWord)) type = 'negative';
 
     segmentElements.push(
-      <HighlightedKeyword key={`${segmentKeyPrefix}-keyword-${keywordMatch.index}`} type={type}>
+      <HighlightedKeyword key={`${keyPrefix}-keyword-${keywordMatch.index}`} type={type}>
         {matchedWord}
       </HighlightedKeyword>
     );
     segmentLastIndex = keywordRegex.lastIndex;
   }
   if (segmentLastIndex < segment.length) {
-    segmentElements.push(...processBoldTextSegment(segment.substring(segmentLastIndex), `${segmentKeyPrefix}-postkw-${segmentLastIndex}`));
+    segmentElements.push(segment.substring(segmentLastIndex));
   }
-  return segmentElements.map((el, i) => <React.Fragment key={`${segmentKeyPrefix}-frag-${i}`}>{el}</React.Fragment>);
+  return segmentElements.map((el, i) => <React.Fragment key={`${keyPrefix}-frag-${i}`}>{el}</React.Fragment>);
 };
 
-const parseAndHighlightText = (text: string | undefined): React.ReactNode => {
-  if (!text) return null;
+const parseTextRecursively = (text: string, keyPrefix: string, isAlreadyBold: boolean = false): React.ReactNode[] => {
+  if (!text) return [];
 
-  const moveRegex = /\b([PNBRQK]?[a-h]?[1-8]?x?[a-h][1-8](?:=[PNBRQK])?[+#]?|O-O(?:-O)?)\b/g;
-  
   const elements: React.ReactNode[] = [];
+  
+  if (!isAlreadyBold) {
+    boldRegex.lastIndex = 0;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = boldRegex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        elements.push(...parseTextRecursively(text.substring(lastIndex, match.index), `${keyPrefix}-nonbold-${lastIndex}`, false));
+      }
+      elements.push(
+        <strong key={`${keyPrefix}-bold-${match.index}`} className="font-bold">
+          {parseTextRecursively(match[1], `${keyPrefix}-boldcontent-${match.index}`, true)}
+        </strong>
+      );
+      lastIndex = boldRegex.lastIndex;
+    }
+    if (lastIndex < text.length) {
+      elements.push(...parseTextRecursively(text.substring(lastIndex), `${keyPrefix}-nonbold-${lastIndex}`, false));
+    }
+    return elements.map((el, i) => <React.Fragment key={`${keyPrefix}-mainfrag-${i}`}>{el}</React.Fragment>);
+  }
+
+  // If isAlreadyBold or no more bold markers in this segment, process for moves and keywords
+  moveRegex.lastIndex = 0;
   let lastIndex = 0;
   let match;
-  moveRegex.lastIndex = 0; // Reset regex state
 
   while ((match = moveRegex.exec(text)) !== null) {
     if (match.index > lastIndex) {
-      elements.push(...processSegment(text.substring(lastIndex, match.index), `text-${lastIndex}`));
+      elements.push(...processKeywordsInSegment(text.substring(lastIndex, match.index), `${keyPrefix}-kwseg-${lastIndex}`));
     }
     elements.push(
-      <HighlightedMove key={`move-${match.index}`}>
+      <HighlightedMove key={`${keyPrefix}-move-${match.index}`}>
         {match[0]}
       </HighlightedMove>
     );
     lastIndex = moveRegex.lastIndex;
   }
-
   if (lastIndex < text.length) {
-    elements.push(...processSegment(text.substring(lastIndex), `text-${lastIndex}`));
+    elements.push(...processKeywordsInSegment(text.substring(lastIndex), `${keyPrefix}-kwseg-${lastIndex}`));
   }
   
-  return <>{elements.map((el, idx) => <React.Fragment key={`final-${idx}`}>{el}</React.Fragment>)}</>;
+  return elements.map((el, i) => <React.Fragment key={`${keyPrefix}-subfrag-${i}`}>{el}</React.Fragment>);
+};
+
+const parseAndHighlightText = (text: string | undefined): React.ReactNode => {
+  if (!text) return null;
+  return <>{parseTextRecursively(text, "root")}</>;
 };
 
 
