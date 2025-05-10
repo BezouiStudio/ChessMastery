@@ -54,13 +54,13 @@ It is currently {{{currentTurn}}}'s turn to move.
 {{#if lastPlayerMove}}
 The player ({{#if lastMoveMadeByWhite}}White{{/if}}{{#if lastMoveMadeByBlack}}Black{{/if}}) just played: {{{lastPlayerMove}}}.
 Analyze this specific move for the player who made it:
-1.  **Player's Move Evaluation**: Evaluate the strategic and tactical implications of {{{lastPlayerMove}}}. Categorize its quality (e.g., Excellent, Good, Inaccuracy, Mistake, Blunder). Detail its strengths and weaknesses.
-2.  **Better Alternatives**: If there were clearly better alternative moves for the player instead of {{{lastPlayerMove}}}, list one or two such moves. For each, provide the move in algebraic notation and a concise explanation of why it would have been stronger. If {{{lastPlayerMove}}} was optimal or very good, state that no significantly better alternatives were available or the move was strong.
+1.  **Player's Move Evaluation**: Evaluate the strategic and tactical implications of {{{lastPlayerMove}}}. Categorize its quality (e.g., **Excellent**, **Good**, **Inaccuracy**, **Mistake**, **Blunder**). Detail its strengths and weaknesses. Use markdown bold syntax (**text**) for emphasis on key terms like move quality or important concepts.
+2.  **Better Alternatives**: If there were clearly better alternative moves for the player instead of {{{lastPlayerMove}}}, list one or two such moves. For each, provide the move in algebraic notation and a concise explanation of why it would have been stronger. If {{{lastPlayerMove}}} was optimal or very good, state that no significantly better alternatives were available or the move was strong. Use markdown bold syntax for emphasis.
 {{/if}}
 
 Now, provide a general analysis FOR THE PLAYER WHOSE TURN IT IS NOW ({{{currentTurn}}}):
-3.  **General Board Analysis**: Give an overview of the material balance, pawn structure, king safety for both sides, and key positional advantages or disadvantages.
-4.  **Strategic Suggestions for {{{currentTurn}}}**: Suggest one or two potential strategic or tactical moves for {{{currentTurn}}} to consider for their upcoming move. For each suggestion, provide the move in algebraic notation and explain the reasoning behind it (e.g., improving piece activity, exploiting a weakness, setting up an attack, defensive necessity).
+3.  **General Board Analysis**: Give an overview of the material balance, pawn structure, king safety for both sides, and key positional advantages or disadvantages. Use markdown bold syntax for emphasis.
+4.  **Strategic Suggestions for {{{currentTurn}}}**: Suggest one or two potential strategic or tactical moves for {{{currentTurn}}} to consider for their upcoming move. For each suggestion, provide the move in algebraic notation and explain the reasoning behind it (e.g., improving piece activity, exploiting a weakness, setting up an attack, defensive necessity). Use markdown bold syntax for emphasis.
 
 Respond strictly in the format defined by the output schema.
 For "playerMoveEvaluation", provide a comprehensive text.
@@ -81,4 +81,3 @@ const aiTutorAnalysisFlow = ai.defineFlow(
     return output!;
   }
 );
-

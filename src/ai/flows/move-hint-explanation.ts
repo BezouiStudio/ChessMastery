@@ -19,6 +19,7 @@ const ExplainMoveHintInputSchema = z.object({
   difficultyLevel: z
     .enum(['beginner', 'intermediate', 'advanced'])
     .describe('The difficulty level of the AI opponent.'),
+  isPlayerInCheckBeforeHintedMove: z.boolean().optional().describe('Whether the player was in check on the currentBoardState before this suggestedMove is made.'),
 });
 export type ExplainMoveHintInput = z.infer<typeof ExplainMoveHintInputSchema>;
 
@@ -40,8 +41,16 @@ const prompt = ai.definePrompt({
 Current Board State (FEN): {{{currentBoardState}}}
 Suggested Move: {{{suggestedMove}}}
 Difficulty Level: {{{difficultyLevel}}}
+{{#if isPlayerInCheckBeforeHintedMove}}
+The player was in CHECK on this board state before the suggested move.
+{{/if}}
 
-Provide a clear, concise, and easy-to-understand explanation of why this move is being suggested.  Focus on the strategic and tactical implications of the move, and how it benefits the player. Do not make up facts.
+Provide a clear, concise, and easy-to-understand explanation of why this move is being suggested.
+{{#if isPlayerInCheckBeforeHintedMove}}
+Specifically explain how this move addresses the check (e.g., by moving the king, blocking the check, or capturing the attacking piece). Since this is a suggested legal move, it must resolve the check.
+{{/if}}
+Focus on the strategic and tactical implications of the move, and how it benefits the player. Do not make up facts.
+Use markdown bold syntax (**text**) for critical keywords or phrases in your explanation if appropriate for emphasis.
 `,
 });
 

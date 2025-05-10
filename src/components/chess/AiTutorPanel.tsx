@@ -30,55 +30,76 @@ const HighlightedKeyword: React.FC<{ children: React.ReactNode; type: 'positive'
   return <span className={className}>{children}</span>;
 };
 
+const processBoldTextSegment = (text: string, keyPrefix: string): React.ReactNode[] => {
+  const boldRegex = /\*\*(.*?)\*\*/g;
+  const elements: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let boldMatch;
+  boldRegex.lastIndex = 0; // Reset regex state
+
+  while ((boldMatch = boldRegex.exec(text)) !== null) {
+    if (boldMatch.index > lastIndex) {
+      elements.push(text.substring(lastIndex, boldMatch.index));
+    }
+    elements.push(
+      <strong key={`${keyPrefix}-bold-${boldMatch.index}`} className="font-bold">
+        {boldMatch[1]}
+      </strong>
+    );
+    lastIndex = boldRegex.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    elements.push(text.substring(lastIndex));
+  }
+  return elements.map((el, i) => <React.Fragment key={`${keyPrefix}-sfrag-${i}`}>{el}</React.Fragment>);
+};
+
+const positiveKeywordsList = ['strong', 'standard', 'well-regarded', 'excellent', 'good', 'advantage', 'control', 'develop', 'initiative', 'king safety', 'pin', 'fork', 'skewer', 'discovered attack', 'key', 'critical', 'opportunity', 'improving', 'better', 'solid', 'active'];
+const negativeKeywordsList = ['inaccuracy', 'mistake', 'blunder', 'disadvantage', 'threat', 'weakness', 'poor', 'passive', 'exposed', 'unsafe'];
+const neutralKeywordsList = ['center', 'queen', 'bishop', 'rook', 'knight', 'pawn', 'king', 'kingside', 'queenside', 'tempo', 'material', 'pawn structure', 'opening', 'middlegame', 'endgame', 'tactic', 'strategy', 'positional'];
+
+const allKeywords = [...positiveKeywordsList, ...negativeKeywordsList, ...neutralKeywordsList];
+const keywordRegex = new RegExp(`\\b(${allKeywords.join('|')})\\b`, 'gi');
+
+const processSegment = (segment: string, segmentKeyPrefix: string): React.ReactNode[] => {
+  const segmentElements: React.ReactNode[] = [];
+  let segmentLastIndex = 0;
+  let keywordMatch;
+  keywordRegex.lastIndex = 0; // Reset regex state for each segment
+
+  while ((keywordMatch = keywordRegex.exec(segment)) !== null) {
+    if (keywordMatch.index > segmentLastIndex) {
+      segmentElements.push(...processBoldTextSegment(segment.substring(segmentLastIndex, keywordMatch.index), `${segmentKeyPrefix}-prekw-${segmentLastIndex}`));
+    }
+    
+    const matchedWord = keywordMatch[0];
+    const lowerCaseWord = matchedWord.toLowerCase();
+    let type: 'positive' | 'negative' | 'neutral' = 'neutral';
+    if (positiveKeywordsList.includes(lowerCaseWord)) type = 'positive';
+    else if (negativeKeywordsList.includes(lowerCaseWord)) type = 'negative';
+
+    segmentElements.push(
+      <HighlightedKeyword key={`${segmentKeyPrefix}-keyword-${keywordMatch.index}`} type={type}>
+        {matchedWord}
+      </HighlightedKeyword>
+    );
+    segmentLastIndex = keywordRegex.lastIndex;
+  }
+  if (segmentLastIndex < segment.length) {
+    segmentElements.push(...processBoldTextSegment(segment.substring(segmentLastIndex), `${segmentKeyPrefix}-postkw-${segmentLastIndex}`));
+  }
+  return segmentElements.map((el, i) => <React.Fragment key={`${segmentKeyPrefix}-frag-${i}`}>{el}</React.Fragment>);
+};
+
 const parseAndHighlightText = (text: string | undefined): React.ReactNode => {
   if (!text) return null;
 
   const moveRegex = /\b([PNBRQK]?[a-h]?[1-8]?x?[a-h][1-8](?:=[PNBRQK])?[+#]?|O-O(?:-O)?)\b/g;
   
-  const positiveKeywordsList = ['strong', 'standard', 'well-regarded', 'excellent', 'good', 'advantage', 'control', 'develop', 'initiative', 'king safety', 'pin', 'fork', 'skewer', 'discovered attack', 'key', 'critical', 'opportunity', 'improving', 'better', 'solid', 'active'];
-  const negativeKeywordsList = ['inaccuracy', 'mistake', 'blunder', 'disadvantage', 'threat', 'weakness', 'poor', 'passive', 'exposed', 'unsafe'];
-  const neutralKeywordsList = ['center', 'queen', 'bishop', 'rook', 'knight', 'pawn', 'king', 'kingside', 'queenside', 'tempo', 'material', 'pawn structure', 'opening', 'middlegame', 'endgame', 'tactic', 'strategy', 'positional'];
-
-  // Combine all keywords for a single regex pass on text segments
-  const allKeywords = [...positiveKeywordsList, ...negativeKeywordsList, ...neutralKeywordsList];
-  const keywordRegex = new RegExp(`\\b(${allKeywords.join('|')})\\b`, 'gi');
-  
   const elements: React.ReactNode[] = [];
   let lastIndex = 0;
   let match;
-
-  const processSegment = (segment: string, segmentKeyPrefix: string) => {
-    const segmentElements: React.ReactNode[] = [];
-    let segmentLastIndex = 0;
-    let keywordMatch;
-    keywordRegex.lastIndex = 0; // Reset regex state for each segment
-
-    while ((keywordMatch = keywordRegex.exec(segment)) !== null) {
-      if (keywordMatch.index > segmentLastIndex) {
-        segmentElements.push(segment.substring(segmentLastIndex, keywordMatch.index));
-      }
-      
-      const matchedWord = keywordMatch[0];
-      const lowerCaseWord = matchedWord.toLowerCase();
-      let type: 'positive' | 'negative' | 'neutral' = 'neutral';
-      if (positiveKeywordsList.includes(lowerCaseWord)) type = 'positive';
-      else if (negativeKeywordsList.includes(lowerCaseWord)) type = 'negative';
-
-      segmentElements.push(
-        <HighlightedKeyword key={`${segmentKeyPrefix}-keyword-${keywordMatch.index}`} type={type}>
-          {matchedWord}
-        </HighlightedKeyword>
-      );
-      segmentLastIndex = keywordRegex.lastIndex;
-    }
-    if (segmentLastIndex < segment.length) {
-      segmentElements.push(segment.substring(segmentLastIndex));
-    }
-    // Wrap raw string parts in Fragment to assign keys if needed, or handle as is.
-    // React can handle arrays of mixed strings and components.
-    // Keys for HighlightedKeyword are important.
-    return segmentElements.map((el, i) => <React.Fragment key={`${segmentKeyPrefix}-frag-${i}`}>{el}</React.Fragment>);
-  };
+  moveRegex.lastIndex = 0; // Reset regex state
 
   while ((match = moveRegex.exec(text)) !== null) {
     if (match.index > lastIndex) {

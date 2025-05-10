@@ -14,6 +14,7 @@ const VagueChessHintInputSchema = z.object({
   currentBoardState: z.string().describe('FEN representation of the current chess board state.'),
   currentTurn: z.string().describe('The color of the player whose turn it is (w or b).'),
   difficultyLevel: z.enum(['beginner', 'intermediate', 'advanced']).describe('The difficulty level of the game context.'),
+  isPlayerInCheck: z.boolean().optional().describe('Whether the current player (whose turn it is) is in check.'),
 });
 export type VagueChessHintInput = z.infer<typeof VagueChessHintInputSchema>;
 
@@ -34,20 +35,30 @@ const prompt = ai.definePrompt({
 Current Board State (FEN): {{{currentBoardState}}}
 It's {{{currentTurn}}}'s turn.
 Difficulty: {{{difficultyLevel}}}
+{{#if isPlayerInCheck}}
+The player ({{{currentTurn}}}) is currently in CHECK. The hint should prioritize getting out of check.
+{{/if}}
 
 Provide a brief, vague strategic tip or an area of the board to focus on.
+{{#if isPlayerInCheck}}
+Focus on moves that address the check, like protecting your king or capturing the attacking piece.
+{{else}}
+Consider general strategy based on the board.
+{{/if}}
 DO NOT suggest a specific move.
 Keep it to 1-2 sentences.
 Your response should directly be the hint text.
 
-Examples of good vague hints:
+Examples of good vague hints (general, adapt if in check):
 - "Consider improving the coordination of your pieces."
 - "Look for ways to control the center of the board."
-- "Evaluate the safety of your king."
+- "Evaluate the safety of your king." (Especially relevant if in check!)
 - "Are there any undefended pieces for either side?"
 - "Think about your pawn structure and potential weaknesses."
 - "Is there an opportunity to activate your rooks?"
 - "Check for any tactical possibilities like forks or pins."
+- (If in check): "Focus on how to get your King out of danger."
+- (If in check): "Can you block the check or capture the piece threatening your King?"
 `,
 });
 

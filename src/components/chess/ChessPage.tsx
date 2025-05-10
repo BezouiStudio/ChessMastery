@@ -301,6 +301,7 @@ const ChessPage: React.FC = () => {
         currentBoardState: fenBeforeCurrentAiMove,
         suggestedMove: aiMoveNotationValue,
         difficultyLevel: currentDifficulty,
+        // AI move explanation doesn't need to know if AI was in check, as AI should always make legal moves
       });
       setAiMoveExplanationOutput({ move: aiMoveNotationValue, explanation: result.explanation });
       toast({ title: "AI Move Explained", description: `AI played ${aiMoveNotationValue}`});
@@ -387,16 +388,18 @@ const ChessPage: React.FC = () => {
       setHighlightedHintSquares(null); // Clear old highlights
     }
     
+    const fen = boardToFen(board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber);
+    const playerCurrentlyInCheck = isCheck; // isCheck reflects current turn's (playerColor) check status
 
     if (hintLevel === 0 || hintLevel === 2) { // Request Vague Hint
       setIsFetchingVagueHint(true);
       setIsFetchingSpecificHint(false);
       try {
-        const fen = boardToFen(board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber);
         const result = await getVagueChessHint({
           currentBoardState: fen,
           currentTurn: turn,
           difficultyLevel: difficulty,
+          isPlayerInCheck: playerCurrentlyInCheck,
         });
         setAiHint({ explanation: result.vagueHint, type: 'vague' });
         setHintLevel(1);
@@ -420,7 +423,6 @@ const ChessPage: React.FC = () => {
           return;
         }
         
-        const fen = boardToFen(board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber);
         const pieceBeingMoved = getPieceAtSquare(board, hintMove.from);
         
         const isEnPassantCaptureForHint = pieceBeingMoved?.symbol === 'p' && hintMove.to === enPassantTarget && hintMove.from !== hintMove.to;
@@ -446,6 +448,7 @@ const ChessPage: React.FC = () => {
           currentBoardState: fen,
           suggestedMove: algebraicNotation,
           difficultyLevel: difficulty,
+          isPlayerInCheckBeforeHintedMove: playerCurrentlyInCheck,
         });
         setAiHint({ move: algebraicNotation, explanation: result.explanation, type: 'specific' });
         setHighlightedHintSquares({ from: hintMove.from, to: hintMove.to });
