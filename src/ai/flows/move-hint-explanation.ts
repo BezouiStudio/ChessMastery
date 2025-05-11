@@ -62,79 +62,84 @@ export async function explainMultipleMoveHints(input: ExplainMoveHintInput): Pro
 }
 
 const prompt = ai.definePrompt({
-  name: 'explainMoveHintsPrompt', // Renamed to reflect potential multiple hints
+  name: 'explainMoveHintsPrompt', 
   input: {schema: ExplainMoveHintInputSchema},
-  output: {schema: ExplainMultipleMoveHintsOutputSchema}, // Output is now an array of suggestions
-  prompt: `You are an expert chess tutor. Your primary goal is to provide strategically sound and 100% LEGAL chess moves.
+  output: {schema: ExplainMultipleMoveHintsOutputSchema}, 
+  prompt: `You are an expert chess tutor. Your primary goal is to provide strategically sound and 100% LEGAL chess moves based *strictly* on the provided FEN.
 Current Board State (FEN): {{{currentBoardState}}}
 It is {{{currentTurn}}}'s turn.
 Difficulty Level: {{{difficultyLevel}}}
 {{#if isPlayerInCheck}}
-The player ({{{currentTurn}}}) is currently in CHECK. This is a critical piece of information for your move suggestions.
+The player ({{{currentTurn}}}) is currently in CHECK. This is a critical piece of information for your move suggestions. All suggestions MUST resolve the check.
 {{else}}
-You MUST analyze the FEN \`{{{currentBoardState}}}\` to determine if {{{currentTurn}}} is in check, even if 'isPlayerInCheck' is not provided or is false.
+You MUST meticulously analyze the FEN \`{{{currentBoardState}}}\` to determine if {{{currentTurn}}} is in check, even if 'isPlayerInCheck' is not provided or is false. If in check, all suggestions MUST resolve it.
 {{/if}}
 
-You need to provide {{{numberOfSuggestions}}} distinct, strong, and 100% legal chess move suggestions. If providing multiple suggestions, try to offer varied strategic ideas if possible. For each suggestion, provide:
-1.  The move in standard algebraic notation.
-2.  The 'from' square.
-3.  The 'to' square.
-4.  A clear explanation.
+You need to provide {{{numberOfSuggestions}}} distinct, strong, and **100% legal chess moves**. If providing multiple suggestions, try to offer varied strategic ideas if possible. For each suggestion, you must provide:
+1.  The move in standard algebraic notation (e.g., e4, Nf3, O-O, Qxg7#). This is 'suggestedMoveNotation'.
+2.  The 'from' square (e.g., 'e2'). This is 'suggestedMoveFromSquare'.
+3.  The 'to' square (e.g., 'e4'). This is 'suggestedMoveToSquare'.
+4.  A clear explanation for 'explanation'.
 
 **CRITICAL INSTRUCTIONS - ADHERE STRICTLY FOR EACH SUGGESTION:**
-1.  **Analyze Board and Check Status**:
-    *   Carefully analyze the FEN: \`{{{currentBoardState}}}\`. This FEN is the SOLE source of truth for piece positions.
-    *   Determine if the player ({{{currentTurn}}}) is currently in check. Use the 'isPlayerInCheck' input if provided, otherwise deduce *correctly* from the FEN.
-2.  **Identify Strong, 100% Legal Moves**:
-    *   Based *only* on the pieces and their positions as defined in \`{{{currentBoardState}}}\` and whose turn it is ({{{currentTurn}}}), identify the requested number of strong and **100% legal chess moves**.
-    *   **If {{{currentTurn}}} is in check, ALL suggested moves ABSOLUTELY MUST resolve the check** (by moving the king, blocking the check, or capturing the attacking piece). Failure to do so makes the move illegal.
-    *   Consider the \`difficultyLevel\` ({{{difficultyLevel}}}) when evaluating the strength and complexity of the moves.
+The FEN string \`{{{currentBoardState}}}\` is the **ABSOLUTE AND ONLY SOURCE OF TRUTH** for all piece positions, turn, and game state. Do not infer or assume any state not explicitly represented in this FEN.
+
+1.  **Analyze Board and Check Status from FEN**:
+    *   Meticulously analyze the FEN: \`{{{currentBoardState}}}\`.
+    *   Determine if {{{currentTurn}}} is in check based *solely* on this FEN. Use 'isPlayerInCheck' as a hint, but verify with the FEN.
+2.  **Identify Strong, 100% Legal Moves from FEN**:
+    *   Based *only* on the FEN \`{{{currentBoardState}}}\` and whose turn it is ({{{currentTurn}}}), identify the requested number of strong and **100% legal chess moves**.
+    *   **If {{{currentTurn}}} is in check (verified from FEN!), ALL suggested moves ABSOLUTELY MUST resolve the check** (by moving the king, blocking, or capturing the attacker).
+    *   Consider the \`difficultyLevel\` ({{{difficultyLevel}}}) for move strength/complexity.
 3.  **Standard Algebraic Notation**:
-    *   Provide each move in standard algebraic notation (e.g., e4, Nf3, O-O, Qxg7#). This is 'suggestedMoveNotation'.
+    *   Provide each move in standard algebraic notation. Ensure it's accurate for the move made from \`suggestedMoveFromSquare\` to \`suggestedMoveToSquare\` on the given FEN.
+    *   If a pawn capture, use 'x' (e.g., exd5). If a non-capture pawn move, do not use 'x'.
 4.  **Accurate From/To Squares**:
-    *   For each \`suggestedMoveNotation\` and the \`currentBoardState\`, precisely determine its 'from' square (e.g., 'e2') and 'to' square (e.g., 'e4').
-    *   For castling (O-O or O-O-O), 'from' is the king's start square (e1/e8), 'to' is the king's end square (g1/c1 or g8/c8 respectively).
-    *   These squares, 'suggestedMoveFromSquare' and 'suggestedMoveToSquare', MUST be accurate for the given notation and board for EACH suggestion.
+    *   For EACH \`suggestedMoveNotation\` you generate, and based *strictly* on the \`currentBoardState\` FEN, precisely determine its 'suggestedMoveFromSquare' and 'suggestedMoveToSquare'.
+    *   These squares MUST correspond to the starting and ending square of a specific, single piece on the FEN that can legally make the move.
+    *   For castling (O-O or O-O-O), 'from' is king's start, 'to' is king's end.
 5.  **Explain Each Move**:
-    *   Provide a clear, concise explanation for why EACH move is strong and what it achieves.
-    *   Focus on strategic/tactical implications.
-    *   If the player was in check, explicitly state how the move resolves it.
+    *   Provide a clear, concise explanation. Focus on strategy/tactics.
+    *   If the player was in check (verified from FEN), explicitly state how the move resolves it.
     *   Use markdown bold syntax (**text**) for critical keywords or phrases in your explanation if appropriate for emphasis.
 
-**MANDATORY VERIFICATION (Perform this meticulously for EACH suggestion before outputting, using ONLY the provided FEN):**
-*   **Piece Exists**: Does the piece you intend to move actually exist on its \`suggestedMoveFromSquare\` in the FEN \`{{{currentBoardState}}}\`?
-*   **Correct Piece Type**: Is the piece on its \`suggestedMoveFromSquare\` in the FEN the correct type for the move you are suggesting?
-*   **Basic Legality**: Is the \`suggestedMoveNotation\` a valid move pattern for the piece on its \`suggestedMoveFromSquare\`?
-*   **Pawn Moves (Crucial Detail):**
-    *   **Non-Capture Forward Move:** If a pawn moves one square forward (e.g., e2 to e3), its destination square (\`suggestedMoveToSquare\`) must be **EMPTY** in the FEN.
-    *   **Two-Square Initial Pawn Move:** If a pawn moves two squares (e.g., e2 to e4), BOTH intermediate (e.g., e3) AND destination (\`suggestedMoveToSquare\`) squares must be **EMPTY** in the FEN.
-    *   **Pawn Capture:** If it's a pawn capture (e.g., exd5), is there an OPPONENT'S piece on the destination square?
-    *   **En Passant:** Ensure en passant conditions are met.
-*   **Obstructions**: Are there any pieces blocking the path for sliding pieces (Bishop, Rook, Queen) if the move is not a capture of the blocking piece itself?
-*   **King Safety (Self-Check)**: Does the move leave the player's ({{{currentTurn}}}'s) king in check? If so, it's illegal.
-*   **Castling Rights & Path**: If suggesting castling, are castling rights available? Are squares between king/rook empty? Does king pass through/land on attacked squares?
-*   **Correct Squares**: Are \`suggestedMoveFromSquare\` and \`suggestedMoveToSquare\` correctly derived for EACH suggestion?
+**MANDATORY VERIFICATION (Perform this with extreme diligence for EACH suggestion before outputting. Use ONLY the provided FEN \`{{{currentBoardState}}}\`. Failure to meet these checks means the output is unusable and incorrect):**
+*   **Piece Exists & Correct Type**: Does the piece you intend to move actually exist on its \`suggestedMoveFromSquare\` in the FEN? Is it the correct color ({{{currentTurn}}}) and type for the move?
+*   **Basic Legality of Path**: Is the path from \`suggestedMoveFromSquare\` to \`suggestedMoveToSquare\` a valid pattern for that specific piece type?
+*   **Pawn Moves (Crucial Detail - verify against FEN for EACH suggestion):**
+    *   **Non-Capture Forward Move (e.g., e2 to e4, or e6 to e7):** The destination square (\`suggestedMoveToSquare\`) AND any intermediate squares (for two-square moves) MUST BE EMPTY in the FEN.
+    *   **Pawn Capture (e.g., exd5):** An OPPONENT'S piece MUST exist on the \`suggestedMoveToSquare\` in the FEN. The notation must include 'x'.
+    *   **En Passant:** If suggesting en passant, ALL conditions (opponent's last move was a two-square pawn advance to an adjacent file, your pawn is on the 5th rank (for white) or 4th rank (for black), the en passant target square in FEN matches your pawn's capture square) MUST be met. The captured pawn is on a different square than \`suggestedMoveToSquare\`.
+*   **Obstructions**: For sliding pieces (Bishop, Rook, Queen), are there ANY pieces (own or opponent) blocking the path between \`suggestedMoveFromSquare\` and \`suggestedMoveToSquare\` if the move is not a capture of the blocking piece itself? Verify against FEN.
+*   **King Safety (Self-Check for {{{currentTurn}}}):** After imagining the move from \`suggestedMoveFromSquare\` to \`suggestedMoveToSquare\` on the FEN, would {{{currentTurn}}}'s king be in check? If yes, the move is ILLEGAL. Suggest a different move.
+*   **Castling Rights & Path**: If suggesting castling:
+    *   Are castling rights for the side and type (K/Q or k/q) present in the FEN's castling field for {{{currentTurn}}}?
+    *   Are ALL squares between the king and the rook EMPTY in the FEN?
+    *   Does the king pass through or land on any square attacked by the opponent (based on the FEN)?
+    *   Is the king currently in check (based on the FEN)? (Cannot castle if in check).
+*   **Accurate Square Derivation**: For EACH \`suggestedMoveNotation\` generated, are \`suggestedMoveFromSquare\` and \`suggestedMoveToSquare\` correctly and unambiguously derived from a single piece of color {{{currentTurn}}} on the FEN that can legally make that specific move? There should be no ambiguity.
 
 Respond strictly in the format defined by the output schema, providing an array of suggestion objects under the 'suggestions' key.
-Example for castling kingside for white (if it were one of many suggestions): { suggestedMoveNotation: "O-O", suggestedMoveFromSquare: "e1", suggestedMoveToSquare: "g1", explanation: "..." }.
-Example for pawn move: { suggestedMoveNotation: "e4", suggestedMoveFromSquare: "e2", suggestedMoveToSquare: "e4", explanation: "..." }. (Assuming e2 white pawn, e3 & e4 empty).
+Example for castling kingside for white: { suggestedMoveNotation: "O-O", suggestedMoveFromSquare: "e1", suggestedMoveToSquare: "g1", explanation: "..." }.
+Example for pawn move e4: { suggestedMoveNotation: "e4", suggestedMoveFromSquare: "e2", suggestedMoveToSquare: "e4", explanation: "..." }. (Assuming e2 white pawn, e3 & e4 empty on FEN).
+Example for pawn capture exd5: { suggestedMoveNotation: "exd5", suggestedMoveFromSquare: "e4", suggestedMoveToSquare: "d5", explanation: "..." }. (Assuming e4 white pawn, d5 black piece on FEN).
 
-Ensure EACH suggested move is not just plausible but **strictly adheres to all chess rules based on the provided FEN**.
-If {{{numberOfSuggestions}}} is 1, provide the single best move. If more than 1, provide that many distinct, strong, legal options.
-If you cannot find enough distinct legal and reasonable moves up to {{{numberOfSuggestions}}}, provide as many as you can find, even if it's just one or none (empty array).
+Ensure EACH suggested move is not just plausible but **strictly adheres to all chess rules based on the provided FEN \`{{{currentBoardState}}}\`**.
+If {{{numberOfSuggestions}}} is 1, provide the single best legal move. If more than 1, provide that many distinct, strong, legal options.
+If you cannot find enough distinct legal and reasonable moves up to {{{numberOfSuggestions}}}, provide as many as you can find, even if it's just one. If no legal moves exist (e.g. checkmate/stalemate), return an empty array for 'suggestions'.
 The output MUST be a JSON object with a "suggestions" key, which is an array of objects matching the ExplainMoveHintOutputSchema structure.
 `,
 });
 
-const explainMoveHintsFlow = ai.defineFlow( // Renamed flow
+const explainMoveHintsFlow = ai.defineFlow(
   {
-    name: 'explainMoveHintsFlow', // Renamed flow
+    name: 'explainMoveHintsFlow', 
     inputSchema: ExplainMoveHintInputSchema,
-    outputSchema: ExplainMultipleMoveHintsOutputSchema, // Output is now an array
+    outputSchema: ExplainMultipleMoveHintsOutputSchema, 
   },
   async input => {
     const {output} = await prompt(input);
-    // Ensure output is not null and suggestions is an array, even if empty
     return output || { suggestions: [] };
   }
 );
+
