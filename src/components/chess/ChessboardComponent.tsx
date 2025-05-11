@@ -1,3 +1,4 @@
+// src/components/chess/ChessboardComponent.tsx
 'use client';
 
 import type { Board, Piece as PieceType, Square } from '@/types/chess';
@@ -5,6 +6,18 @@ import { coordsToSquare, squareToCoords } from '@/lib/chess-logic';
 import PieceComponent from './PieceComponent';
 import { cn } from '@/lib/utils';
 
+// Define a type for the color themes if not already globally available
+interface SuggestionColorTheme {
+  name: string;
+  icon: string;
+  bg: string;
+  border: string;
+  selectedBg: string;
+  selectedBorder: string;
+  ring: string;
+  boardHighlightBg: string;
+  boardHighlightRing: string;
+}
 interface ChessboardProps {
   board: Board;
   onSquareClick: (square: Square) => void;
@@ -14,8 +27,9 @@ interface ChessboardProps {
   isPlayerTurn: boolean;
   playerColor: 'w' | 'b'; 
   kingInCheckSquare: Square | null;
-  highlightedHintSquares?: Array<{ from: Square; to: Square }> | { from: Square; to: Square } | null;
-  selectedHintCustomTheme?: { bgClass: string; ringClass: string } | null;
+  highlightedHintSquares?: Array<{ from: Square; to: Square, hintIndex?: number }> | { from: Square; to: Square, hintIndex?: number } | null;
+  suggestionColorThemes?: SuggestionColorTheme[]; // Pass the color themes
+  selectedHintCustomTheme?: { bgClass: string; ringClass: string } | null; // For single, specifically selected tutor hint
 }
 
 const ChessboardComponent: React.FC<ChessboardProps> = ({
@@ -28,6 +42,7 @@ const ChessboardComponent: React.FC<ChessboardProps> = ({
   playerColor,
   kingInCheckSquare,
   highlightedHintSquares,
+  suggestionColorThemes = [], // Default to empty array
   selectedHintCustomTheme,
 }) => {
   const renderSquares = () => {
@@ -48,31 +63,40 @@ const ChessboardComponent: React.FC<ChessboardProps> = ({
         const isLastMoveOrigin = lastMove?.from === square;
         const isLastMoveTarget = lastMove?.to === square;
         const isKingInCheck = kingInCheckSquare === square;
-
-        const checkHintSquare = (hintSpec: { from: Square; to: Square } | null): boolean => {
-          return !!hintSpec && (hintSpec.from === square || hintSpec.to === square);
-        };
         
-        let isThisSquarePartOfAnyHint = false;
+        let currentHintStyle: { bgClass: string; ringClass: string } | null = null;
+        let isPartOfHighlightedHint = false;
+
         if (Array.isArray(highlightedHintSquares)) {
-          isThisSquarePartOfAnyHint = highlightedHintSquares.some(h => checkHintSquare(h));
-        } else {
-          isThisSquarePartOfAnyHint = checkHintSquare(highlightedHintSquares);
+          // Multiple hints, find if this square belongs to any and get its theme
+          for (const hintSpec of highlightedHintSquares) {
+            if (hintSpec.from === square || hintSpec.to === square) {
+              isPartOfHighlightedHint = true;
+              if (hintSpec.hintIndex !== undefined && hintSpec.hintIndex >= 0 && suggestionColorThemes.length > 0) {
+                const theme = suggestionColorThemes[hintSpec.hintIndex % suggestionColorThemes.length];
+                currentHintStyle = { bgClass: theme.boardHighlightBg, ringClass: theme.boardHighlightRing };
+              } else { // Fallback if no specific theme (should ideally not happen for array)
+                currentHintStyle = { bgClass: 'bg-highlight-hint/30', ringClass: 'ring-highlight-hint/70' };
+              }
+              break; 
+            }
+          }
+        } else if (highlightedHintSquares) {
+          // Single hint object
+          if (highlightedHintSquares.from === square || highlightedHintSquares.to === square) {
+            isPartOfHighlightedHint = true;
+            if (selectedHintCustomTheme) { // A specific tutor suggestion was clicked and has a theme
+              currentHintStyle = selectedHintCustomTheme;
+            } else if (highlightedHintSquares.hintIndex !== undefined && highlightedHintSquares.hintIndex >= 0 && suggestionColorThemes.length > 0) {
+              // This case might occur if a single suggestion is active from full tutoring but not "selected" via click
+              const theme = suggestionColorThemes[highlightedHintSquares.hintIndex % suggestionColorThemes.length];
+              currentHintStyle = { bgClass: theme.boardHighlightBg, ringClass: theme.boardHighlightRing };
+            } else { // Default for "Get Specific Hint" button
+              currentHintStyle = { bgClass: 'bg-highlight-hint/30', ringClass: 'ring-highlight-hint/70' };
+            }
+          }
         }
-
-        let hintBgClassToApply = 'bg-highlight-hint/30';
-        let hintRingClassToApply = 'ring-highlight-hint/70';
-
-        // Use custom theme if provided and this square is part of the hint
-        // This check is specifically for when a single tutor suggestion is selected.
-        // For multi-highlight of tutor suggestions, selectedHintCustomTheme will be null,
-        // and it will fall back to the default blue hint.
-        if (isThisSquarePartOfAnyHint && selectedHintCustomTheme && !Array.isArray(highlightedHintSquares)) {
-           hintBgClassToApply = selectedHintCustomTheme.bgClass;
-           hintRingClassToApply = selectedHintCustomTheme.ringClass;
-        }
-
-
+        
         squares.push(
           <div
             key={square}
@@ -81,10 +105,10 @@ const ChessboardComponent: React.FC<ChessboardProps> = ({
               isLightSquare ? "bg-board-light-square" : "bg-board-dark-square",
               (isPlayerTurn || selectedSquare) && "cursor-pointer hover:bg-opacity-80",
               isSelected && "ring-3 ring-highlight-selected ring-inset z-10 bg-highlight-selected/30",
-              isThisSquarePartOfAnyHint && !isSelected && cn(
-                hintBgClassToApply, 
+              isPartOfHighlightedHint && !isSelected && currentHintStyle && cn(
+                currentHintStyle.bgClass, 
                 "ring-2", 
-                hintRingClassToApply, 
+                currentHintStyle.ringClass, 
                 "ring-inset"
               ),
             )}
@@ -105,7 +129,7 @@ const ChessboardComponent: React.FC<ChessboardProps> = ({
                 />
               </div>
             )}
-            {(isLastMoveOrigin || isLastMoveTarget) && !isThisSquarePartOfAnyHint && !isSelected && ( 
+            {(isLastMoveOrigin || isLastMoveTarget) && !isPartOfHighlightedHint && !isSelected && ( 
               <div className="absolute inset-0 bg-highlight-move/20 pointer-events-none" />
             )}
              {isKingInCheck && (
