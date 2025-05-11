@@ -110,7 +110,7 @@ The FEN string \`{{{currentBoardState}}}\` is the **ABSOLUTE AND ONLY SOURCE OF 
         *   **Intermediate ({{{difficultyLevel}}}):** Explain short-term plans, control of key squares, pawn structure implications, common tactical motifs.
         *   **Advanced ({{{difficultyLevel}}}):** Discuss deeper positional concepts, long-term strategic goals, subtle tactical points, prophylactic value.
 
-**MANDATORY VERIFICATION (Perform this with extreme diligence for EACH suggestion before outputting. Use ONLY the provided FEN \`{{{currentBoardState}}}\`. Failure to meet these checks means the output is unusable and incorrect):**
+**MANDATORY VERIFICATION (Perform this with extreme diligence for EACH suggestion. Use ONLY the provided FEN \`{{{currentBoardState}}}\`. Failure to meet these checks means the output is unusable and incorrect):**
 *   **Piece Exists & Correct Type**: Does the piece you intend to move actually exist on its \`suggestedMoveFromSquare\` in the FEN \`{{{currentBoardState}}}\`? Is it the correct color ({{{currentTurn}}}) and type for the move?
 *   **Basic Legality of Path**: Is the path from \`suggestedMoveFromSquare\` to \`suggestedMoveToSquare\` a valid movement pattern for that specific piece type according to chess rules?
 *   **Pawn Moves (Crucial Detail - verify against FEN \`{{{currentBoardState}}}\` for EACH suggestion):**
@@ -160,3 +160,4 @@ const explainMoveHintsFlow = ai.defineFlow(
     return output || { suggestions: [] };
   }
 );
+

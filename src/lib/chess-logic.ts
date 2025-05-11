@@ -140,8 +140,9 @@ function canPieceAttackSquare(board: Board, attackerSq: Square, targetSq: Square
         for (let i = 1; i < 8; i++) {
           const r = attackerR + dr * i;
           const c = attackerC + dc * i;
+          if (!isValidSquare(r,c)) break; // Off board before reaching target
           if (r === targetR && c === targetC) return true; // Found target
-          if (!isValidSquare(r, c) || board[r][c]) break; // Off board or blocked by ANY piece
+          if (board[r][c]) break; // Blocked by ANY piece before reaching target
         }
       }
       return false;
@@ -165,6 +166,7 @@ function isSquareAttacked(board: Board, targetSq: Square, attackerPlayerColor: P
         for (let c = 0; c < 8; c++) {
             const piece = board[r][c];
             if (piece && piece.color === attackerPlayerColor) {
+                 // Use canPieceAttackSquare to check if the piece at (r,c) can attack targetSq
                 if (canPieceAttackSquare(board, coordsToSquare(r, c), targetSq, piece)) {
                     return true;
                 }
@@ -287,26 +289,26 @@ function generatePseudoLegalMoves(board: Board, square: Square, piece: Piece, cu
       });
       // Castling
       const opponentColor = turn === 'w' ? 'b' : 'w';
-      if (!isKingInCheck(board, turn)) { // Can't castle if currently in check
+      if (!isSquareAttacked(board, square, opponentColor)) { // Can't castle if king is currently in check on its current square
         if (turn === 'w') {
           if (currentTurnCastlingRights.includes('K') && square === 'e1' && !board[7][5] && !board[7][6]) {
-            if (!isSquareAttacked(board, 'e1', opponentColor) && !isSquareAttacked(board, 'f1', opponentColor) && !isSquareAttacked(board, 'g1', opponentColor)) {
+            if (!isSquareAttacked(board, 'f1', opponentColor) && !isSquareAttacked(board, 'g1', opponentColor)) { // King must not pass through or land on an attacked square
               moves.push('g1');
             }
           }
           if (currentTurnCastlingRights.includes('Q') && square === 'e1' && !board[7][1] && !board[7][2] && !board[7][3]) {
-            if (!isSquareAttacked(board, 'e1', opponentColor) && !isSquareAttacked(board, 'd1', opponentColor) && !isSquareAttacked(board, 'c1', opponentColor)) {
+            if (!isSquareAttacked(board, 'd1', opponentColor) && !isSquareAttacked(board, 'c1', opponentColor)) { // King must not pass through or land on an attacked square
               moves.push('c1');
             }
           }
         } else { // Black's turn
           if (currentTurnCastlingRights.includes('k') && square === 'e8' && !board[0][5] && !board[0][6]) {
-            if (!isSquareAttacked(board, 'e8', opponentColor) && !isSquareAttacked(board, 'f8', opponentColor) && !isSquareAttacked(board, 'g8', opponentColor)) {
+            if (!isSquareAttacked(board, 'f8', opponentColor) && !isSquareAttacked(board, 'g8', opponentColor)) {
               moves.push('g8');
             }
           }
           if (currentTurnCastlingRights.includes('q') && square === 'e8' && !board[0][1] && !board[0][2] && !board[0][3]) {
-             if (!isSquareAttacked(board, 'e8', opponentColor) && !isSquareAttacked(board, 'd8', opponentColor) && !isSquareAttacked(board, 'c8', opponentColor)) {
+             if (!isSquareAttacked(board, 'd8', opponentColor) && !isSquareAttacked(board, 'c8', opponentColor)) {
               moves.push('c8');
             }
           }
@@ -325,14 +327,20 @@ export function getLegalMoves(board: Board, square: Square, turn: PieceColor, cu
   const legalMoves: Square[] = [];
 
   for (const toSq of pseudoLegalMoves) {
-    const { newBoard } = makeMove(
-        board, 
+    // Create a deep copy of the board for simulation
+    const tempBoard = board.map(r => [...r]);
+    
+    const { newBoard } = makeMove( // Use makeMove for simulation logic, but on tempBoard
+        tempBoard, 
         square, 
         toSq, 
-        currentCastlingRights, // Pass current state, makeMove doesn't need it for simulation's check safety
-        currentEnPassantTarget, // Pass current state
-        piece.symbol === 'p' && (squareToCoords(toSq).row === 0 || squareToCoords(toSq).row === 7) ? 'q' : undefined // Default promotion for simulation
+        currentCastlingRights,
+        currentEnPassantTarget, 
+        // For pawn promotion simulation, default to queen. The actual promotion piece is handled later.
+        piece.symbol === 'p' && (squareToCoords(toSq).row === 0 || squareToCoords(toSq).row === 7) ? 'q' : undefined
     );
+
+    // After the simulated move, check if the current player's king is in check
     if (!isKingInCheck(newBoard, turn)) {
       legalMoves.push(toSq);
     }
@@ -373,8 +381,14 @@ export function makeMove(
   // En passant capture: pawn moves to an empty square, but captures pawn on adjacent square
   if (pieceToMove.symbol === 'p' && currentEnPassantTarget && toSquare === currentEnPassantTarget) {
     const epCapturedPawnRow = pieceToMove.color === 'w' ? toCoords.row + 1 : toCoords.row - 1;
-    capturedPiece = newBoard[epCapturedPawnRow][toCoords.col]; // The pawn being captured via en passant
-    newBoard[epCapturedPawnRow][toCoords.col] = null;
+    if (isValidSquare(epCapturedPawnRow, toCoords.col)) { // Check if epCapturedPawnRow is valid
+        capturedPiece = newBoard[epCapturedPawnRow][toCoords.col]; // The pawn being captured via en passant
+        newBoard[epCapturedPawnRow][toCoords.col] = null;
+    } else {
+      // This case should ideally not be reached if enPassantTarget is correctly set.
+      // console.warn("En passant capture row out of bounds:", epCapturedPawnRow);
+      capturedPiece = null; // No piece captured if out of bounds.
+    }
   }
   
   newBoard[toCoords.row][toCoords.col] = pieceToMove;
@@ -548,3 +562,4 @@ export function getRandomAiMove(board: Board, color: PieceColor, castlingRights:
   if (possibleMoves.length === 0) return null;
   return possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
 }
+
