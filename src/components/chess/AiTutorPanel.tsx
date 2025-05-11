@@ -74,9 +74,33 @@ const FeedbackBlock: React.FC<FeedbackBlockProps> = ({
 };
 
 const suggestionColorThemes = [
-  { icon: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/30", selectedBg: "bg-purple-500/20", selectedBorder: "border-purple-500", ring: "ring-purple-500" },
-  { icon: "text-pink-600 dark:text-pink-400", bg: "bg-pink-500/10", border: "border-pink-500/30", selectedBg: "bg-pink-500/20", selectedBorder: "border-pink-500", ring: "ring-pink-500" },
-  { icon: "text-sky-600 dark:text-sky-400", bg: "bg-sky-500/10", border: "border-sky-500/30", selectedBg: "bg-sky-500/20", selectedBorder: "border-sky-500", ring: "ring-sky-500" },
+  { 
+    name: "Indigo",
+    icon: "text-indigo-600 dark:text-indigo-400", 
+    bg: "bg-indigo-500/10 dark:bg-indigo-500/20",
+    border: "border-indigo-500/30 dark:border-indigo-500/40", 
+    selectedBg: "bg-indigo-500/20 dark:bg-indigo-500/30", 
+    selectedBorder: "border-indigo-500 dark:border-indigo-400", 
+    ring: "ring-indigo-500 dark:ring-indigo-400" 
+  },
+  { 
+    name: "Teal",
+    icon: "text-teal-600 dark:text-teal-400", 
+    bg: "bg-teal-500/10 dark:bg-teal-500/20", 
+    border: "border-teal-500/30 dark:border-teal-500/40", 
+    selectedBg: "bg-teal-500/20 dark:bg-teal-500/30", 
+    selectedBorder: "border-teal-500 dark:border-teal-400", 
+    ring: "ring-teal-500 dark:ring-teal-400" 
+  },
+  { 
+    name: "Amber",
+    icon: "text-amber-600 dark:text-amber-400", 
+    bg: "bg-amber-500/10 dark:bg-amber-500/20", 
+    border: "border-amber-500/30 dark:border-amber-500/40", 
+    selectedBg: "bg-amber-500/20 dark:bg-amber-500/30", 
+    selectedBorder: "border-amber-500 dark:border-amber-400", 
+    ring: "ring-amber-500 dark:ring-amber-400" 
+  },
 ];
 
 
@@ -146,7 +170,7 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({
                             titleColorClass={theme.icon}
                             bgColorClass={theme.bg}
                             borderColorClass={theme.border}
-                            selectedTitleColorClass={theme.icon} // Keep icon color same for selected
+                            selectedTitleColorClass={theme.icon} 
                             selectedBgClass={theme.selectedBg}
                             selectedBorderClass={theme.selectedBorder}
                             selectedRingClass={theme.ring}
@@ -164,10 +188,10 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({
                  <FeedbackBlock
                     icon={Brain}
                     title="Tutor Mode Active"
-                    titleColorClass="text-purple-600 dark:text-purple-400" // Default purple for this message
-                    bgColorClass="bg-purple-500/10"
-                    borderColorClass="border-purple-500/30"
-                    selectedRingClass="ring-purple-500" // Fallback selected styling
+                    titleColorClass={suggestionColorThemes[0].icon} 
+                    bgColorClass={suggestionColorThemes[0].bg}
+                    borderColorClass={suggestionColorThemes[0].border}
+                    selectedRingClass={suggestionColorThemes[0].ring} 
                 >
                     <p>AI is observing. Play a move or wait for AI's turn to see suggestions. Currently, no specific suggestions for this position.</p>
                 </FeedbackBlock>
@@ -190,7 +214,7 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({
               <FeedbackBlock
                 icon={Target}
                 title="Suggested Move (Hint)"
-                titleColorClass="text-accent" // Green accent for regular hints
+                titleColorClass="text-accent" 
                 bgColorClass="bg-accent/10"
                 borderColorClass="border-accent/30"
                 selectedRingClass="ring-accent"
