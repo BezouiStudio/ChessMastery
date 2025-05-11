@@ -15,6 +15,7 @@ interface ChessboardProps {
   playerColor: 'w' | 'b'; 
   kingInCheckSquare: Square | null;
   highlightedHintSquares?: Array<{ from: Square; to: Square }> | { from: Square; to: Square } | null;
+  selectedHintCustomTheme?: { bgClass: string; ringClass: string } | null;
 }
 
 const ChessboardComponent: React.FC<ChessboardProps> = ({
@@ -27,6 +28,7 @@ const ChessboardComponent: React.FC<ChessboardProps> = ({
   playerColor,
   kingInCheckSquare,
   highlightedHintSquares,
+  selectedHintCustomTheme,
 }) => {
   const renderSquares = () => {
     const squares = [];
@@ -58,6 +60,19 @@ const ChessboardComponent: React.FC<ChessboardProps> = ({
           isThisSquarePartOfAnyHint = checkHintSquare(highlightedHintSquares);
         }
 
+        let hintBgClassToApply = 'bg-highlight-hint/30';
+        let hintRingClassToApply = 'ring-highlight-hint/70';
+
+        // Use custom theme if provided and this square is part of the hint
+        // This check is specifically for when a single tutor suggestion is selected.
+        // For multi-highlight of tutor suggestions, selectedHintCustomTheme will be null,
+        // and it will fall back to the default blue hint.
+        if (isThisSquarePartOfAnyHint && selectedHintCustomTheme && !Array.isArray(highlightedHintSquares)) {
+           hintBgClassToApply = selectedHintCustomTheme.bgClass;
+           hintRingClassToApply = selectedHintCustomTheme.ringClass;
+        }
+
+
         squares.push(
           <div
             key={square}
@@ -66,7 +81,12 @@ const ChessboardComponent: React.FC<ChessboardProps> = ({
               isLightSquare ? "bg-board-light-square" : "bg-board-dark-square",
               (isPlayerTurn || selectedSquare) && "cursor-pointer hover:bg-opacity-80",
               isSelected && "ring-3 ring-highlight-selected ring-inset z-10 bg-highlight-selected/30",
-              isThisSquarePartOfAnyHint && !isSelected && "bg-highlight-hint/30 ring-2 ring-highlight-hint/70 ring-inset", // Avoid clash with selected square
+              isThisSquarePartOfAnyHint && !isSelected && cn(
+                hintBgClassToApply, 
+                "ring-2", 
+                hintRingClassToApply, 
+                "ring-inset"
+              ),
             )}
             onClick={() => (isPlayerTurn || selectedSquare) && onSquareClick(square)}
             role="button"
