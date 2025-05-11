@@ -52,11 +52,12 @@ const GameControls: React.FC<GameControlsProps> = ({
       hintButtonText = 'Get Specific Move';
   }
 
-  // Removed React.useCallback for handleSelectDifficultyChange
-  // const handleSelectDifficultyChange = React.useCallback((value: string) => {
-  //   onDifficultyChange(value as Difficulty);
-  // }, [onDifficultyChange]);
-
+  const handleDifficultySelectChange = React.useCallback(
+    (value: string) => {
+      onDifficultyChange(value as Difficulty);
+    },
+    [onDifficultyChange]
+  );
 
   return (
     <Card className="shadow-lg rounded-lg">
@@ -107,7 +108,7 @@ const GameControls: React.FC<GameControlsProps> = ({
           <Label htmlFor="difficulty-select" className="text-xs sm:text-sm font-medium text-muted-foreground">AI Difficulty</Label>
           <Select
             value={difficulty}
-            onValueChange={(value: string) => onDifficultyChange(value as Difficulty)} // Use inline function
+            onValueChange={handleDifficultySelectChange}
             disabled={isAiProcessing}
           >
             <SelectTrigger id="difficulty-select" className="w-full text-xs sm:text-sm h-9 sm:h-10">
