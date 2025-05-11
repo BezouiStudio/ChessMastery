@@ -96,11 +96,11 @@ You MUST provide an array of suggestion objects under the 'suggestions' key. Eac
 **Piece-Specific Movement and Capture Rules (VERIFY AGAINST FEN \`{{{currentBoardState}}}\`):**
 
 *   **Pawns:**
-    *   **Non-Capture Forward Move (e.g., e2-e4):**
-        *   The destination square (\`suggestedMoveToSquare\`, e.g., e4) MUST BE **COMPLETELY EMPTY** in the FEN.
-        *   If a two-square advance (e.g., e2 to e4), the intermediate square (e.g., e3) MUST ALSO BE **COMPLETELY EMPTY** in the FEN.
-        *   **A pawn CANNOT make a non-capture forward move to ANY occupied square (friendly or enemy).**
-    *   **Pawn Capture (e.g., exd5):** An OPPONENT'S piece MUST exist on the \`suggestedMoveToSquare\` in the FEN. Notation must include 'x'.
+    *   **Non-Capture Forward Move (e.g., e2-e4, e7-e5):** This is a move where a pawn moves one or two squares forward along its file WITHOUT capturing.
+        *   The destination square (\`suggestedMoveToSquare\`, e.g., e4) MUST BE **COMPLETELY EMPTY** (no friendly or enemy piece) in the FEN.
+        *   If it is a two-square advance from the starting rank (e.g., e2 to e4 for White, or e7 to e5 for Black), the intermediate square (e.g., e3 for White, e6 for Black) MUST ALSO BE **COMPLETELY EMPTY** in the FEN.
+        *   **CRITICAL: A pawn CANNOT make a non-capture forward move to ANY square that is occupied by ANY piece (friendly OR enemy).** If an enemy piece is on the diagonal forward square, that is a capture (see below). If ANY piece is directly in front on the destination square for a non-capture move, that forward move is ILLEGAL.
+    *   **Pawn Capture (e.g., exd5):** An OPPONENT'S piece MUST exist on the \`suggestedMoveToSquare\` (which is diagonal to the pawn's current square) in the FEN. Notation must include 'x'.
     *   **En Passant:** If suggesting en passant, verify ALL conditions using the FEN:
         *   Opponent's last move was a two-square pawn advance landing on an adjacent file.
         *   Your pawn is on its 5th rank (for white) or 4th rank (for black).
@@ -108,7 +108,7 @@ You MUST provide an array of suggestion objects under the 'suggestions' key. Eac
         *   The captured pawn is on a different square than \`suggestedMoveToSquare\`.
     *   **Promotion:** If a pawn reaches the opponent's back rank, it must be promoted. Provide notation like "e8=Q". Assume Queen promotion unless tactically disadvantageous (rare).
 
-*   **Knights:** Standard L-shape moves. Can jump over pieces. Target square rules (Rule 5) apply.
+*   **Knights:** Standard L-shape moves. Can jump over pieces. Target square rules (Core Rule 5) apply.
 
 *   **Bishops, Rooks, Queens (Sliding Pieces) - EXTREMELY IMPORTANT:**
     *   **Path Clearance:** For ANY move suggested for a Bishop, Rook, or Queen, you MUST meticulously verify the path on the FEN: \`{{{currentBoardState}}}\`.
@@ -117,10 +117,10 @@ You MUST provide an array of suggestion objects under the 'suggestions' key. Eac
         *   Example: For Bf1-c4, if squares e2 or d3 are occupied by ANY piece, the move is ILLEGAL.
         *   Example: For Rd1-d7, if any of d2, d3, d4, d5, d6 are occupied by ANY piece, the move is ILLEGAL.
     *   If the move is a capture, all squares *between* from and to (exclusive) must be empty. \`suggestedMoveToSquare\` must contain an OPPONENT'S piece.
-    *   Target square rules (Rule 5) apply.
+    *   Target square rules (Core Rule 5) apply.
 
 *   **King:**
-    *   Standard one-square moves in any direction. Target square rules (Rule 5) apply.
+    *   Standard one-square moves in any direction. Target square rules (Core Rule 5) apply.
     *   **Castling (O-O or O-O-O):**
         *   Verify castling rights (K/Q for white, k/q for black) are present in FEN's castling field for {{{currentTurn}}}.
         *   King and chosen rook must not have moved previously (implicit in FEN rights).
@@ -150,9 +150,9 @@ You MUST provide an array of suggestion objects under the 'suggestions' key. Eac
 *   If no legal moves exist (checkmate/stalemate), return an empty array for 'suggestions'.
 *   The output MUST be a JSON object with a "suggestions" key, containing an array of objects.
 
-Example for pawn move e4: { "suggestedMoveNotation": "e4", "suggestedMoveFromSquare": "e2", "suggestedMoveToSquare": "e4", "explanation": "..." } (Ensure e2 is white pawn, e3 & e4 are empty on FEN).
-Example for pawn capture exd5: { "suggestedMoveNotation": "exd5", "suggestedMoveFromSquare": "e4", "suggestedMoveToSquare": "d5", "explanation": "..." } (Ensure e4 is white pawn, d5 has a black piece on FEN).
-Example for castling kingside for white: { "suggestedMoveNotation": "O-O", "suggestedMoveFromSquare": "e1", "suggestedMoveToSquare": "g1", "explanation": "..." }.
+Example for pawn move e4 (from e2, assuming e3 and e4 are EMPTY): { "suggestedMoveNotation": "e4", "suggestedMoveFromSquare": "e2", "suggestedMoveToSquare": "e4", "explanation": "..." }
+Example for pawn capture exd5 (from e4, assuming d5 has an ENEMY piece): { "suggestedMoveNotation": "exd5", "suggestedMoveFromSquare": "e4", "suggestedMoveToSquare": "d5", "explanation": "..." }
+Example for castling kingside for white: { "suggestedMoveNotation": "O-O", "suggestedMoveFromSquare": "e1", "suggestedMoveToSquare": "g1", "explanation": "..." }
 
 **PRIORITIZE STRICT RULE ADHERENCE AND FEN ACCURACY ABOVE ALL ELSE. Any doubt about a move's legality means it MUST NOT be suggested.**
 `,
@@ -169,4 +169,3 @@ const explainMoveHintsFlow = ai.defineFlow(
     return output || { suggestions: [] };
   }
 );
-
