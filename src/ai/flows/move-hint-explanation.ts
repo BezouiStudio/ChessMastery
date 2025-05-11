@@ -76,7 +76,7 @@ The player ({{{currentTurn}}}) is currently in CHECK. This is a critical piece o
 You MUST meticulously analyze the FEN \`{{{currentBoardState}}}\` to determine if {{{currentTurn}}} is in check, even if 'isPlayerInCheck' is not provided or is false. If in check, all suggestions MUST resolve it.
 {{/if}}
 
-You need to provide {{{numberOfSuggestions}}} distinct, strong, and **100% legal chess moves**. 
+You need to provide {{{numberOfSuggestions}}} distinct, strong, and **100% legal chess moves**.
 If \`{{{numberOfSuggestions}}}\` is greater than 1, strive to offer moves with *different strategic or tactical ideas* if the position allows for such variety (e.g., one defensive, one attacking; or one positional, one tactical).
 For each suggestion, you must provide:
 1.  The move in standard algebraic notation (e.g., e4, Nf3, O-O, Qxg7#). This is 'suggestedMoveNotation'.
@@ -93,6 +93,7 @@ The FEN string \`{{{currentBoardState}}}\` is the **ABSOLUTE AND ONLY SOURCE OF 
 2.  **Identify Strong, 100% Verifiably Legal Moves Directly From FEN Analysis**:
     *   Based *only* on the FEN \`{{{currentBoardState}}}\` and whose turn it is ({{{currentTurn}}}), identify the requested number of strong and **100% legal chess moves**.
     *   **If {{{currentTurn}}} is in check (verified from FEN!), ALL suggested moves ABSOLUTELY MUST resolve the check** (by moving the king, blocking, or capturing the attacker).
+    *   **For pawn moves that are NOT captures (i.e., the pawn moves one or two squares forward to an empty square): The destination square MUST BE EMPTY. If it's a two-square pawn advance, the intermediate square (the square the pawn jumps over) MUST ALSO BE EMPTY. A pawn CANNOT make a non-capture move to an already occupied square. THIS IS A NON-NEGOTIABLE RULE.**
     *   Consider the \`difficultyLevel\` ({{{difficultyLevel}}}) for move strength/complexity.
 3.  **Standard Algebraic Notation**:
     *   Provide each move in standard algebraic notation. Ensure it's accurate for the move made from \`suggestedMoveFromSquare\` to \`suggestedMoveToSquare\` on the given FEN.
@@ -113,13 +114,16 @@ The FEN string \`{{{currentBoardState}}}\` is the **ABSOLUTE AND ONLY SOURCE OF 
 **MANDATORY VERIFICATION (Perform this with extreme diligence for EACH suggestion. Use ONLY the provided FEN \`{{{currentBoardState}}}\`. Failure to meet these checks means the output is unusable and incorrect):**
 *   **Piece Exists & Correct Type**: Does the piece you intend to move actually exist on its \`suggestedMoveFromSquare\` in the FEN \`{{{currentBoardState}}}\`? Is it the correct color ({{{currentTurn}}}) and type for the move?
 *   **Basic Legality of Path**: Is the path from \`suggestedMoveFromSquare\` to \`suggestedMoveToSquare\` a valid movement pattern for that specific piece type according to chess rules?
-*   **Pawn Moves (Crucial Detail - verify against FEN \`{{{currentBoardState}}}\` for EACH suggestion):**
-    *   **Non-Capture Forward Move (e.g., e2 to e4, or e7 to e6):** The destination square (\`suggestedMoveToSquare\`) AND any intermediate squares (for two-square moves like e2 to e4) MUST BE EMPTY in the FEN \`{{{currentBoardState}}}\`.
+*   **Pawn Move Legality (ABSOLUTELY CRITICAL - VERIFY AGAINST FEN \`{{{currentBoardState}}}\` FOR EACH PAWN MOVE SUGGESTION):**
+    *   **Non-Capture Forward Move (e.g., a pawn moves one or two squares forward without capturing):**
+        *   The destination square (\`suggestedMoveToSquare\`) of this pawn move MUST BE **COMPLETELY EMPTY** in the FEN \`{{{currentBoardState}}}\`.
+        *   If it's a two-square initial pawn move (e.g., e2 to e4), the intermediate square (e.g., 'e3' for e2-e4, the square the pawn jumps over) MUST ALSO BE **COMPLETELY EMPTY** in the FEN \`{{{currentBoardState}}}\`.
+        *   **A pawn CANNOT move forward (non-capture) onto ANY square that is occupied by ANY piece (friendly or enemy). THIS IS A FUNDAMENTAL RULE. If the target square of a forward pawn move has any piece on it, that move is ILLEGAL.**
     *   **Pawn Capture (e.g., exd5):** An OPPONENT'S piece MUST exist on the \`suggestedMoveToSquare\` in the FEN \`{{{currentBoardState}}}\`. The notation must include 'x'.
     *   **En Passant:** If suggesting en passant, ALL conditions (opponent's last move was a two-square pawn advance to an adjacent file, your pawn is on the 5th rank (for white) or 4th rank (for black), the en passant target square in FEN \`{{{currentBoardState}}}\` matches your pawn's capture square) MUST be met based on the FEN. The captured pawn is on a different square than \`suggestedMoveToSquare\`.
 *   **Obstructions (EXTREMELY IMPORTANT for Bishops, Rooks, Queens)**:
     *   For any move suggested for a Bishop, Rook, or Queen, you MUST meticulously verify the path on the FEN: \`{{{currentBoardState}}}\`.
-    *   The path is the sequence of squares between \`suggestedMoveFromSquare\` (exclusive) and \`suggestedMoveToSquare\`.
+    *   The path is the sequence of squares between \`suggestedMoveFromSquare\` (exclusive) and \`suggestedMoveToSquare\` (exclusive).
     *   **EVERY SINGLE INTERMEDIATE SQUARE on this path MUST BE EMPTY in the FEN (\`{{{currentBoardState}}}\`)**. For example, for Bf1-c4, squares e2 and d3 MUST be empty. For Rd1-d7, squares d2, d3, d4, d5, d6 MUST be empty.
     *   If the move is a capture (i.e., \`suggestedMoveToSquare\` contains an opponent's piece in the FEN \`{{{currentBoardState}}}\`), then all squares *between* \`suggestedMoveFromSquare\` (exclusive) and \`suggestedMoveToSquare\` (exclusive) must be empty.
     *   If any intermediate square is occupied by ANY piece (own or opponent), the move is ILLEGAL and MUST NOT be suggested.
