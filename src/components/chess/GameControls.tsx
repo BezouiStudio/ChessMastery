@@ -1,7 +1,7 @@
 // src/components/chess/GameControls.tsx
 'use client';
 
-import React from 'react'; // Added React for useCallback
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Difficulty } from '@/types/chess';
@@ -52,9 +52,10 @@ const GameControls: React.FC<GameControlsProps> = ({
       hintButtonText = 'Get Specific Move';
   }
 
-  const handleSelectDifficultyChange = React.useCallback((value: string) => {
-    onDifficultyChange(value as Difficulty);
-  }, [onDifficultyChange]);
+  // Removed React.useCallback for handleSelectDifficultyChange
+  // const handleSelectDifficultyChange = React.useCallback((value: string) => {
+  //   onDifficultyChange(value as Difficulty);
+  // }, [onDifficultyChange]);
 
 
   return (
@@ -106,7 +107,7 @@ const GameControls: React.FC<GameControlsProps> = ({
           <Label htmlFor="difficulty-select" className="text-xs sm:text-sm font-medium text-muted-foreground">AI Difficulty</Label>
           <Select
             value={difficulty}
-            onValueChange={handleSelectDifficultyChange}
+            onValueChange={(value: string) => onDifficultyChange(value as Difficulty)} // Use inline function
             disabled={isAiProcessing}
           >
             <SelectTrigger id="difficulty-select" className="w-full text-xs sm:text-sm h-9 sm:h-10">
