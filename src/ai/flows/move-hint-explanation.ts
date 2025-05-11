@@ -93,7 +93,7 @@ The FEN string \`{{{currentBoardState}}}\` is the **ABSOLUTE AND ONLY SOURCE OF 
 2.  **Identify Strong, 100% Verifiably Legal Moves Directly From FEN Analysis**:
     *   Based *only* on the FEN \`{{{currentBoardState}}}\` and whose turn it is ({{{currentTurn}}}), identify the requested number of strong and **100% legal chess moves**.
     *   **If {{{currentTurn}}} is in check (verified from FEN!), ALL suggested moves ABSOLUTELY MUST resolve the check** (by moving the king, blocking, or capturing the attacker).
-    *   **For pawn moves that are NOT captures (i.e., the pawn moves one or two squares forward to an empty square): The destination square MUST BE EMPTY. If it's a two-square pawn advance, the intermediate square (the square the pawn jumps over) MUST ALSO BE EMPTY. A pawn CANNOT make a non-capture move to an already occupied square. THIS IS A NON-NEGOTIABLE RULE.**
+    *   **For pawn moves that are NOT captures (i.e., the pawn moves one or two squares forward to an empty square): The destination square (\`suggestedMoveToSquare\`) MUST BE EMPTY in the FEN. If it's a two-square pawn advance, the intermediate square (the square the pawn jumps over) MUST ALSO BE EMPTY in the FEN. A pawn CANNOT make a non-capture move to an already occupied square. THIS IS A NON-NEGOTIABLE RULE.**
     *   Consider the \`difficultyLevel\` ({{{difficultyLevel}}}) for move strength/complexity.
 3.  **Standard Algebraic Notation**:
     *   Provide each move in standard algebraic notation. Ensure it's accurate for the move made from \`suggestedMoveFromSquare\` to \`suggestedMoveToSquare\` on the given FEN.
@@ -114,6 +114,12 @@ The FEN string \`{{{currentBoardState}}}\` is the **ABSOLUTE AND ONLY SOURCE OF 
 **MANDATORY VERIFICATION (Perform this with extreme diligence for EACH suggestion. Use ONLY the provided FEN \`{{{currentBoardState}}}\`. Failure to meet these checks means the output is unusable and incorrect):**
 *   **Piece Exists & Correct Type**: Does the piece you intend to move actually exist on its \`suggestedMoveFromSquare\` in the FEN \`{{{currentBoardState}}}\`? Is it the correct color ({{{currentTurn}}}) and type for the move?
 *   **Basic Legality of Path**: Is the path from \`suggestedMoveFromSquare\` to \`suggestedMoveToSquare\` a valid movement pattern for that specific piece type according to chess rules?
+*   **Target Square Occupancy (CRITICAL FOR ALL PIECES)**:
+    *   If the \`suggestedMoveToSquare\` contains a piece in the FEN \`{{{currentBoardState}}}\`, that piece MUST be of the OPPONENT'S color (i.e., a capture).
+    *   A piece of color {{{currentTurn}}} can NEVER move to a square that is already occupied by another piece of THE SAME color ({{{currentTurn}}}).
+    *   This applies to ALL pieces: Pawns, Knights, Bishops, Rooks, Queens, and Kings.
+    *   For Pawns specifically: a non-capture forward move (e.g., e2-e4) requires the \`suggestedMoveToSquare\` (e.g., e4) to be EMPTY and for a two-square advance, the intermediate square (e.g., e3) must also be EMPTY. A pawn cannot make a non-capture move to ANY occupied square.
+    *   The only exception to moving to an occupied square (by an opponent's piece for capture) is castling, where the King moves to an empty 'g1'/'c1' or 'g8'/'c8' and the Rook moves to an empty 'f1'/'d1' or 'f8'/'d8'. These castling squares must be empty.
 *   **Pawn Move Legality (ABSOLUTELY CRITICAL - VERIFY AGAINST FEN \`{{{currentBoardState}}}\` FOR EACH PAWN MOVE SUGGESTION):**
     *   **Non-Capture Forward Move (e.g., a pawn moves one or two squares forward without capturing):**
         *   The destination square (\`suggestedMoveToSquare\`) of this pawn move MUST BE **COMPLETELY EMPTY** in the FEN \`{{{currentBoardState}}}\`.
@@ -124,9 +130,10 @@ The FEN string \`{{{currentBoardState}}}\` is the **ABSOLUTE AND ONLY SOURCE OF 
 *   **Obstructions (EXTREMELY IMPORTANT for Bishops, Rooks, Queens)**:
     *   For any move suggested for a Bishop, Rook, or Queen, you MUST meticulously verify the path on the FEN: \`{{{currentBoardState}}}\`.
     *   The path is the sequence of squares between \`suggestedMoveFromSquare\` (exclusive) and \`suggestedMoveToSquare\` (exclusive).
-    *   **EVERY SINGLE INTERMEDIATE SQUARE on this path MUST BE EMPTY in the FEN (\`{{{currentBoardState}}}\`)**. For example, for Bf1-c4, squares e2 and d3 MUST be empty. For Rd1-d7, squares d2, d3, d4, d5, d6 MUST be empty.
-    *   If the move is a capture (i.e., \`suggestedMoveToSquare\` contains an opponent's piece in the FEN \`{{{currentBoardState}}}\`), then all squares *between* \`suggestedMoveFromSquare\` (exclusive) and \`suggestedMoveToSquare\` (exclusive) must be empty.
+    *   **EVERY SINGLE INTERMEDIATE SQUARE on this path MUST BE EMPTY in the FEN (\`{{{currentBoardState}}}\`)**. For example, for Bf1-c4, squares e2 and d3 MUST be empty (assuming f1-e2-d3-c4 path). For Rd1-d7, squares d2, d3, d4, d5, d6 MUST be empty.
+    *   If the move is a capture (i.e., \`suggestedMoveToSquare\` contains an opponent's piece in the FEN \`{{{currentBoardState}}}\`), then all squares *between* \`suggestedMoveFromSquare\` (exclusive) and \`suggestedMoveToSquare\` (exclusive) must be empty. The \`suggestedMoveToSquare\` itself must be occupied by an OPPONENT'S piece.
     *   If any intermediate square is occupied by ANY piece (own or opponent), the move is ILLEGAL and MUST NOT be suggested.
+    *   The target square (\`suggestedMoveToSquare\`) itself cannot be occupied by a friendly piece.
     *   This check is paramount. Do not assume clear paths. Verify with the FEN \`{{{currentBoardState}}}\` only.
 *   **King Safety (Self-Check for {{{currentTurn}}}):** After imagining the move from \`suggestedMoveFromSquare\` to \`suggestedMoveToSquare\` on the FEN \`{{{currentBoardState}}}\`, would {{{currentTurn}}}'s king be in check? If yes, the move is ILLEGAL. Suggest a different move.
 *   **Castling Rights & Path**: If suggesting castling (O-O or O-O-O):
@@ -164,4 +171,3 @@ const explainMoveHintsFlow = ai.defineFlow(
     return output || { suggestions: [] };
   }
 );
-
