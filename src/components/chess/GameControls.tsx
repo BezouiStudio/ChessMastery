@@ -4,9 +4,10 @@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Difficulty } from '@/types/chess';
-import { Lightbulb, RotateCcw, Undo, Redo, Settings2 } from 'lucide-react'; 
+import { Lightbulb, RotateCcw, Undo, Redo, Settings2, Brain } from 'lucide-react'; 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch'; // Import Switch
 
 interface GameControlsProps {
   onNewGame: () => void;
@@ -22,6 +23,8 @@ interface GameControlsProps {
   isGameOver: boolean;
   hintLevel: 0 | 1 | 2;
   isAiProcessing: boolean; 
+  isFullTutoringMode: boolean; // New prop
+  onFullTutoringModeChange: (enabled: boolean) => void; // New prop
 }
 
 const GameControls: React.FC<GameControlsProps> = ({
@@ -38,6 +41,8 @@ const GameControls: React.FC<GameControlsProps> = ({
   isGameOver,
   hintLevel,
   isAiProcessing,
+  isFullTutoringMode, // Destructure new prop
+  onFullTutoringModeChange, // Destructure new prop
 }) => {
   let hintButtonText = 'Get AI Hint';
   if (hintLevel === 0 || hintLevel === 2) {
@@ -85,7 +90,7 @@ const GameControls: React.FC<GameControlsProps> = ({
 
         <Button 
           onClick={onHint} 
-          disabled={isLoadingHint || !isPlayerTurn || isGameOver || isAiProcessing} 
+          disabled={isLoadingHint || !isPlayerTurn || isGameOver || isAiProcessing || isFullTutoringMode} // Disable if full tutoring is on
           className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-xs sm:text-sm"
         >
           <Lightbulb className="mr-2 h-3 w-3 sm:h-4 sm:w-4" /> {isLoadingHint ? 'Thinking...' : hintButtonText}
@@ -108,6 +113,22 @@ const GameControls: React.FC<GameControlsProps> = ({
             </SelectContent>
           </Select>
         </div>
+
+        {/* Full Tutoring Mode Switch */}
+        <div className="flex items-center justify-between space-x-2 pt-2">
+          <Label htmlFor="full-tutoring-mode" className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center">
+            <Brain className="mr-2 h-4 w-4 text-purple-500" />
+            Full Tutoring Mode
+          </Label>
+          <Switch
+            id="full-tutoring-mode"
+            checked={isFullTutoringMode}
+            onCheckedChange={onFullTutoringModeChange}
+            disabled={isAiProcessing}
+            className="data-[state=checked]:bg-purple-500"
+          />
+        </div>
+
       </CardContent>
     </Card>
   );

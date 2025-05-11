@@ -6,15 +6,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import type { AiTutorAnalysisOutput } from '@/ai/flows/ai-tutor-analysis';
-import { Lightbulb, Target, ClipboardCheck, Sparkles, Info, Cpu, Bot, Loader, HelpCircle } from 'lucide-react';
+import { Lightbulb, Target, ClipboardCheck, Sparkles, Info, Cpu, Bot, Loader, HelpCircle, Brain } from 'lucide-react'; // Added Brain
 import { cn } from '@/lib/utils';
-import { parseAndHighlightText } from '@/lib/text-parser'; // Import centralized parser
+import { parseAndHighlightText } from '@/lib/text-parser'; 
+import type { Square } from '@/types/chess';
+
 
 interface AiTutorPanelProps {
   hint?: { move?: string; explanation: string; type: 'vague' | 'specific' };
   playerMoveAnalysis?: AiTutorAnalysisOutput;
   aiMoveExplanation?: { move: string; explanation: string };
-  isLoading: boolean;
+  isLoading: boolean; // General loading for manual hints/analysis
+  fullTutorSuggestion?: { move: string; explanation: string; from: Square; to: Square } | null; // New prop
+  isFullTutoringActive?: boolean; // New prop
+  isLoadingFullTutorSuggestion?: boolean; // New prop
 }
 
 const FeedbackBlock: React.FC<{
@@ -37,8 +42,18 @@ const FeedbackBlock: React.FC<{
 );
 
 
-const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, aiMoveExplanation, isLoading }) => {
+const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ 
+  hint, 
+  playerMoveAnalysis, 
+  aiMoveExplanation, 
+  isLoading,
+  fullTutorSuggestion,
+  isFullTutoringActive,
+  isLoadingFullTutorSuggestion 
+}) => {
   
+  const generalLoading = isLoading || isLoadingFullTutorSuggestion;
+
   return (
     <Card className="h-full shadow-md flex flex-col">
       <CardHeader className="py-3 px-3 sm:py-4 sm:px-4 shrink-0">
@@ -50,14 +65,29 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
       <CardContent className="flex-grow overflow-hidden py-2 px-1 sm:py-3 sm:px-2"> 
         <ScrollArea className="h-full w-full rounded-md border p-2 sm:p-3">
           <div className="space-y-3 sm:space-y-4">
-            {isLoading && (
+            {generalLoading && (
               <div className="flex items-center justify-center space-x-2 text-sm sm:text-base text-muted-foreground py-8">
                 <Loader className="h-5 w-5 sm:h-6 sm:w-6 animate-spin text-primary" />
                 <span>AI is thinking...</span>
               </div>
             )}
             
-            {!isLoading && hint && hint.type === 'vague' && (
+            {!generalLoading && isFullTutoringActive && fullTutorSuggestion && (
+              <FeedbackBlock
+                icon={Brain}
+                title="Tutor's Suggestion"
+                titleColorClass="text-purple-600 dark:text-purple-400"
+                bgColorClass="bg-purple-500/10"
+                borderColorClass="border-purple-500/30"
+              >
+                <div className="flex items-center gap-2 mb-1">
+                    <Badge variant="default" className="bg-purple-500 dark:bg-purple-600 text-white text-sm sm:text-base px-2 sm:px-2.5 py-0.5 sm:py-1">{fullTutorSuggestion.move}</Badge>
+                </div>
+                <p className="whitespace-pre-wrap">{parseAndHighlightText(fullTutorSuggestion.explanation)}</p>
+              </FeedbackBlock>
+            )}
+
+            {!generalLoading && hint && hint.type === 'vague' && (
               <FeedbackBlock
                 icon={Lightbulb}
                 title="General Tip"
@@ -69,10 +99,10 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
               </FeedbackBlock>
             )}
 
-            {!isLoading && hint && hint.type === 'specific' && hint.move && (
+            {!generalLoading && hint && hint.type === 'specific' && hint.move && (
               <FeedbackBlock
                 icon={Target}
-                title="Suggested Move"
+                title="Suggested Move (Hint)"
                 titleColorClass="text-accent"
                 bgColorClass="bg-accent/10"
                 borderColorClass="border-accent/30"
@@ -84,7 +114,7 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
               </FeedbackBlock>
             )}
             
-            {!isLoading && playerMoveAnalysis && (
+            {!generalLoading && playerMoveAnalysis && (
               <>
                 {playerMoveAnalysis.playerMoveEvaluation && (
                   <FeedbackBlock
@@ -147,7 +177,7 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
               </>
             )}
 
-            {!isLoading && aiMoveExplanation && (
+            {!generalLoading && aiMoveExplanation && (
                <FeedbackBlock
                 icon={Bot}
                 title={`AI Played`}
@@ -162,10 +192,10 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({ hint, playerMoveAnalysis, a
               </FeedbackBlock>
             )}
 
-            {!isLoading && !hint && !playerMoveAnalysis && !aiMoveExplanation && (
+            {!generalLoading && !hint && !playerMoveAnalysis && !aiMoveExplanation && (!isFullTutoringActive || !fullTutorSuggestion) && (
               <div className="flex flex-col items-center justify-center text-center py-8 sm:py-10 text-sm sm:text-base text-muted-foreground space-y-3 sm:space-y-4">
                 <HelpCircle className="h-10 w-10 sm:h-12 sm:w-12 text-primary/70" />
-                <p className="max-w-xs">Play a move or request a hint to get personalized feedback from the AI Tutor.</p>
+                <p className="max-w-xs">Play a move, request a hint, or enable Full Tutoring Mode to get feedback.</p>
               </div>
             )}
           </div>
