@@ -265,6 +265,7 @@ const ChessPage: React.FC = () => {
         lastPlayerMove: playerLastMove,
         lastMoveMadeByWhite: playerLastMove ? playerWhoMadeLastMoveColor === 'w' : undefined,
         lastMoveMadeByBlack: playerLastMove ? playerWhoMadeLastMoveColor === 'b' : undefined,
+        difficultyLevel: difficulty,
       });
       setPlayerMoveAnalysis(result);
 
@@ -273,7 +274,7 @@ const ChessPage: React.FC = () => {
       let toastDescriptionContent = "";
 
       if (result.playerMoveEvaluation) {
-        const qualityMatch = result.playerMoveEvaluation.match(/\*\*(Excellent|Good|Inaccuracy|Mistake|Blunder|Okay|Decent|Solid|Reasonable|Acceptable|Suboptimal|Strong|Optimal|Best)\*\*/i);
+        const qualityMatch = result.playerMoveEvaluation.match(/\*\*(Brilliant!!|Excellent!|Good|Interesting\!?|Dubious\?!|Inaccuracy\?|Mistake\?|Blunder\(\?\?\)|Okay|Decent|Solid|Reasonable|Acceptable|Suboptimal|Strong|Optimal|Best)\*\*/i);
         if (qualityMatch && qualityMatch[1]) {
           toastTitle = `Your Move: ${qualityMatch[1]}`;
         }
@@ -282,6 +283,8 @@ const ChessPage: React.FC = () => {
         const sentences = result.playerMoveEvaluation.split('. ');
         if (sentences.length > 2) {
           evalSnippet = sentences.slice(0, Math.min(3, sentences.length - 1)).join('. ') + '.';
+        } else {
+           evalSnippet = sentences.slice(0, Math.min(2, sentences.length)).join('. ') + (sentences.length > 1 ? '.' : '');
         }
         if (evalSnippet.length > 250) {
           evalSnippet = evalSnippet.substring(0, 250) + "...";
@@ -291,7 +294,7 @@ const ChessPage: React.FC = () => {
 
       if (result.betterPlayerMoveSuggestions && result.betterPlayerMoveSuggestions.length > 0) {
         const suggestion = result.betterPlayerMoveSuggestions[0];
-        let betterMoveText = ` Consider: ${suggestion.move}. ${suggestion.explanation}`;
+        let betterMoveText = ` Consider: **${suggestion.move}**. ${suggestion.explanation}`;
         const betterMoveSentences = betterMoveText.split('. ');
         if (betterMoveSentences.length > 1) {
           betterMoveText = betterMoveSentences[0] + '.';
@@ -304,9 +307,9 @@ const ChessPage: React.FC = () => {
       } else if (result.playerMoveEvaluation) {
         const isPositiveMove = result.playerMoveEvaluation.toLowerCase().includes("excellent") ||
           result.playerMoveEvaluation.toLowerCase().includes("good") ||
-          result.playerMoveAnalysis.toLowerCase().includes("strong") ||
-          result.playerMoveAnalysis.toLowerCase().includes("optimal") ||
-          result.playerMoveAnalysis.toLowerCase().includes("best");
+          result.playerMoveEvaluation.toLowerCase().includes("strong") ||
+          result.playerMoveEvaluation.toLowerCase().includes("optimal") ||
+          result.playerMoveEvaluation.toLowerCase().includes("best");
         if (isPositiveMove && (!result.betterPlayerMoveSuggestions || result.betterPlayerMoveSuggestions.length === 0)) {
           toastDescriptionContent += (toastDescriptionContent ? " " : "") + "This was a strong move! No clearly better alternatives found.";
         }
@@ -336,7 +339,7 @@ const ChessPage: React.FC = () => {
     } finally {
       setIsLoadingAiTutor(false);
     }
-  }, [toast]);
+  }, [toast, difficulty]);
 
   const processMove = useCallback((fromSq: Square, toSq: Square, promotionPieceSymbol?: PieceSymbol) => {
     if (isCheckmate || isStalemate) return;
@@ -1024,3 +1027,4 @@ const ChessPage: React.FC = () => {
 };
 
 export default ChessPage;
+
