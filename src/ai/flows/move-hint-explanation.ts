@@ -75,8 +75,8 @@ You MUST analyze the FEN \`{{{currentBoardState}}}\` to determine if {{{currentT
 *   **Basic Legality**: Is the \`suggestedMoveNotation\` a valid move pattern for the piece on \`suggestedMoveFromSquare\` according to standard chess rules?
     *   Bishop moves diagonally. Knight in 'L' shape. Rook horizontally/vertically. King one square in any direction.
 *   **Pawn Moves (Crucial Detail):**
-    *   **Non-Capture Forward Move:** If it's a pawn moving one square forward (e.g., e2 to e3), is the destination square (\`suggestedMoveToSquare\`) **COMPLETELY EMPTY** in the FEN \`{{{currentBoardState}}}\`? Pawns CANNOT move forward onto an occupied square.
-    *   **Two-Square Initial Pawn Move:** If it's a pawn moving two squares forward (e.g., e2 to e4), are BOTH the intermediate square (e.g., e3) AND the destination square (\`suggestedMoveToSquare\`, e.g., e4) **COMPLETELY EMPTY** in the FEN?
+    *   **Non-Capture Forward Move:** If it's a pawn moving one square forward (e.g., a white pawn moving from e2 to e3), the destination square (\`suggestedMoveToSquare\`, e.g., e3) must be **ABSOLUTELY, COMPLETELY EMPTY** in the FEN \`{{{currentBoardState}}}\`. It cannot contain ANY piece, whether friendly or opponent. Pawns CANNOT move forward onto an OCCUPIED square if it's not a capture. This is a VERY common mistake to avoid.
+    *   **Two-Square Initial Pawn Move:** If it's a pawn moving two squares forward (e.g., a white pawn from e2 to e4), BOTH the intermediate square (e.g., e3) AND the destination square (\`suggestedMoveToSquare\`, e.g., e4) must be **ABSOLUTELY, COMPLETELY EMPTY** (no friendly or opponent pieces) in the FEN. These squares must not contain any piece.
     *   **Pawn Capture:** If it's a pawn capture (e.g., exd5), is there an OPPONENT'S piece on the destination square (\`suggestedMoveToSquare\`) in the FEN?
     *   **En Passant:** If it's an en passant capture, ensure all conditions for en passant are met based on the FEN and the opponent's last move (if deducible or implied by an en passant target square in the FEN, though not directly provided in input).
 *   **Obstructions**: Are there any pieces (friendly or opponent) **blocking the path** for sliding pieces (Bishop, Rook, Queen) if the move is not a capture of the blocking piece itself? Verify this against the FEN \`{{{currentBoardState}}}\`.
@@ -86,10 +86,10 @@ You MUST analyze the FEN \`{{{currentBoardState}}}\` to determine if {{{currentT
 
 Respond strictly in the format defined by the output schema.
 Example for castling kingside for white: suggestedMoveNotation: "O-O", suggestedMoveFromSquare: "e1", suggestedMoveToSquare: "g1".
-Example for pawn move: suggestedMoveNotation: "e4", suggestedMoveFromSquare: "e2", suggestedMoveToSquare: "e4". (Assuming e3 and e4 are empty).
+Example for pawn move: suggestedMoveNotation: "e4", suggestedMoveFromSquare: "e2", suggestedMoveToSquare: "e4". (Assuming e2 contains a white pawn, and e3 and e4 are completely empty).
 Example for knight move: suggestedMoveNotation: "Nf3", suggestedMoveFromSquare: "g1", suggestedMoveToSquare: "f3".
 
-Ensure your suggested move is not just plausible but **strictly adheres to all chess rules based on the provided FEN**. An illegal suggestion is far worse than no suggestion. If the board state is unusual or leads to limited options, prioritize legality above all else.
+Ensure your suggested move is not just plausible but **strictly adheres to all chess rules based on the provided FEN**. An illegal suggestion is far worse than no suggestion. If the board state is unusual or leads to limited options, prioritize legality above all else. If you cannot find a legal and reasonable move, you should indicate an issue, but aim to always provide one if possible.
 `,
 });
 
