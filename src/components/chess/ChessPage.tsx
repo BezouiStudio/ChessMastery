@@ -53,8 +53,8 @@ const suggestionColorThemes = [
     selectedBg: "bg-indigo-500/20 dark:bg-indigo-500/30", 
     selectedBorder: "border-indigo-500 dark:border-indigo-400", 
     ring: "ring-indigo-500 dark:ring-indigo-400",
-    boardHighlightBg: "bg-indigo-500/30", // For board square background
-    boardHighlightRing: "ring-indigo-500/70"  // For board square ring
+    boardHighlightBg: "bg-indigo-500/30",
+    boardHighlightRing: "ring-indigo-500/70" 
   },
   { 
     name: "Teal",
@@ -177,18 +177,14 @@ const ChessPage: React.FC = () => {
     }
   }, [findKing]);
 
-  const clearAiTutorState = useCallback((preserveFullTutorModeHighlights = false) => {
+ const clearAiTutorState = useCallback(() => {
     setAiHint(undefined);
-    if (!preserveFullTutorModeHighlights) {
-      setHighlightedHintSquares(null);
-      setSelectedFullTutorSuggestionIndex(null);
-    }
+    setHighlightedHintSquares(null);
+    setSelectedFullTutorSuggestionIndex(null);
     setHintLevel(0);
     setPlayerMoveAnalysis(null); 
     setAiMoveExplanationOutput(null);
-    if (!preserveFullTutorModeHighlights) { 
-      setFullTutorSuggestions(null);
-    }
+    setFullTutorSuggestions(null); // Always clear to force refetch for new board states
   }, []);
 
 
@@ -296,7 +292,6 @@ const ChessPage: React.FC = () => {
       let errorDescription = "Could not fetch player move analysis.";
       if (error instanceof Error && error.message.includes("parseAndHighlightText")) {
         errorDescription = "Error displaying analysis. Plain text in panel.";
-        // Fallback or provide plain text to setPlayerMoveAnalysis if result was fetched but parsing failed
       }
       toast({ title: "Error", description: errorDescription, variant: "destructive" });
     } finally {
@@ -360,7 +355,7 @@ const ChessPage: React.FC = () => {
     setMoveHistory(prev => [...prev, moveNotation]);
     setLastMove({ from: fromSq, to: toSq });
     
-    clearAiTutorState(isFullTutoringMode); 
+    clearAiTutorState(); // Always clear tutor state to get fresh analysis/suggestions
     updateGameStatusDisplay(newBoard, newTurn, updatedCastlingRights, updatedEnPassantTarget);
     setSelectedSquare(null);
     setValidMoves([]);
@@ -370,14 +365,13 @@ const ChessPage: React.FC = () => {
     if (prevTurn === playerColor) {
       fetchPlayerMoveAnalysis(currentFenForAnalysis, newTurn, moveNotation);
     } else {
-      setPlayerMoveAnalysis(null);
+      setPlayerMoveAnalysis(null); // Clear analysis if AI made the move
     }
   }, [
     board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber, 
     updateGameStatusDisplay, playerColor,
     isCheckmate, isStalemate, 
-    fetchPlayerMoveAnalysis, saveCurrentStateToHistory, clearAiTutorState, moveHistory,
-    isFullTutoringMode 
+    fetchPlayerMoveAnalysis, saveCurrentStateToHistory, clearAiTutorState, moveHistory
   ]);
 
   const handleFullTutoringModeChange = useCallback((enabled: boolean) => {
@@ -387,10 +381,8 @@ const ChessPage: React.FC = () => {
       setHighlightedHintSquares(null); 
       setSelectedFullTutorSuggestionIndex(null);
     } else {
-      // When enabling, clear any existing specific hint
       setAiHint(undefined);
       setHintLevel(0);
-      // Highlighted squares will be managed by the full tutor useEffect
     }
   }, []);
 
@@ -401,24 +393,23 @@ const ChessPage: React.FC = () => {
 
 
   useEffect(() => {
-    // Effect for Full Tutoring Mode
     if (
       isFullTutoringMode &&
       turn === playerColor &&
-      !aiHint && // Don't fetch if a manual hint is active
+      !aiHint &&
       !isCheckmate &&
       !isStalemate &&
       !isLoadingAiMove && 
       !isLoadingAiTutor &&
-      !isFetchingFullTutorSuggestionRef.current // Check ref instead of state here
+      !isFetchingFullTutorSuggestionRef.current
     ) {
       const fetchSuggestions = async () => {
         isFetchingFullTutorSuggestionRef.current = true;
         setIsFetchingFullTutorSuggestion(true);
-
-        if (selectedFullTutorSuggestionIndex !== null) {
-            setSelectedFullTutorSuggestionIndex(null);
-        }
+        
+        // Clear previous selections when fetching new suggestions
+        setSelectedFullTutorSuggestionIndex(null);
+        setHighlightedHintSquares(null); 
 
         const fen = boardToFen(board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber);
         const playerCurrentlyInCheck = isCheck;
@@ -434,26 +425,21 @@ const ChessPage: React.FC = () => {
 
           if (result.suggestions && result.suggestions.length > 0) {
             setFullTutorSuggestions(result.suggestions);
-            if (selectedFullTutorSuggestionIndex === null && !aiHint) { 
-                const allSuggestionSquares = result.suggestions.map((s, index) => ({
-                    from: s.suggestedMoveFromSquare as Square,
-                    to: s.suggestedMoveToSquare as Square,
-                    hintIndex: index // Add index for coloring
-                }));
-                setHighlightedHintSquares(allSuggestionSquares);
-            }
+            // Auto-highlight all suggestions initially
+            const allSuggestionSquares = result.suggestions.map((s, index) => ({
+                from: s.suggestedMoveFromSquare as Square,
+                to: s.suggestedMoveToSquare as Square,
+                hintIndex: index 
+            }));
+            setHighlightedHintSquares(allSuggestionSquares);
           } else {
             setFullTutorSuggestions(null); 
-            if (selectedFullTutorSuggestionIndex === null && !aiHint && Array.isArray(highlightedHintSquares)) { 
-                 setHighlightedHintSquares(null);
-            }
+            setHighlightedHintSquares(null);
           }
         } catch (error) {
           console.error("Error fetching full tutor suggestions:", error);
           setFullTutorSuggestions(null); 
-          if (selectedFullTutorSuggestionIndex === null && !aiHint && Array.isArray(highlightedHintSquares)) { 
-              setHighlightedHintSquares(null);
-          }
+          setHighlightedHintSquares(null);
           toast({ title: "Tutor Error", description: "Could not get tutor suggestions.", variant: "destructive" });
         } finally {
           setIsFetchingFullTutorSuggestion(false);
@@ -461,37 +447,24 @@ const ChessPage: React.FC = () => {
         }
       };
       
-      if (!fullTutorSuggestions || fullTutorSuggestions.length === 0 || selectedFullTutorSuggestionIndex === null) {
-         fetchSuggestions();
-      } else if (selectedFullTutorSuggestionIndex !== null && fullTutorSuggestions && fullTutorSuggestions[selectedFullTutorSuggestionIndex]) {
-         const selectedSugg = fullTutorSuggestions[selectedFullTutorSuggestionIndex];
-         setHighlightedHintSquares({ 
-           from: selectedSugg.suggestedMoveFromSquare as Square, 
-           to: selectedSugg.suggestedMoveToSquare as Square,
-           hintIndex: selectedFullTutorSuggestionIndex // Keep its original index
-         });
-      }
+      fetchSuggestions();
+
     } else if (!isFullTutoringMode || turn !== playerColor || isCheckmate || isStalemate || aiHint) {
+      // If conditions for full tutoring are not met, clear its specific states
       if (fullTutorSuggestions) { 
         setFullTutorSuggestions(null);
       }
-      if (selectedFullTutorSuggestionIndex === null && !aiHint && Array.isArray(highlightedHintSquares)) { 
+      if (selectedFullTutorSuggestionIndex !== null || (Array.isArray(highlightedHintSquares) && !aiHint)) {
+        // Clear highlights if they were from full tutor and not a specific hint
         setHighlightedHintSquares(null);
-      }
-       if (selectedFullTutorSuggestionIndex !== null) {
         setSelectedFullTutorSuggestionIndex(null);
       }
     }
-  // Critical dependencies that should trigger re-evaluation for fetching suggestions.
-  // isLoading states are conditions *inside* the effect, not triggers themselves for fetching.
-  // `isFetchingFullTutorSuggestion` (state) is removed to prevent loops; ref is used internally.
   }, [
     isFullTutoringMode, turn, playerColor, board, castlingRights, enPassantTarget,
     halfMoveClock, fullMoveNumber, isCheck, difficulty,
     isCheckmate, isStalemate, aiHint, toast, 
-    isLoadingAiMove, isLoadingAiTutor // These can prevent fetching if true
-    // `fullTutorSuggestions` removed to avoid loop if it was changed by this effect.
-    // `selectedFullTutorSuggestionIndex` removed, selection changes highlight but not re-fetch all.
+    isLoadingAiMove, isLoadingAiTutor 
   ]);
 
   const handleSelectFullTutorSuggestion = useCallback((suggestion: ExplainMoveHintOutput) => {
@@ -503,15 +476,27 @@ const ChessPage: React.FC = () => {
     );
 
     if (index !== -1) {
-        setSelectedFullTutorSuggestionIndex(index);
-        setHighlightedHintSquares({ 
-            from: suggestion.suggestedMoveFromSquare as Square, 
-            to: suggestion.suggestedMoveToSquare as Square,
-            hintIndex: index // Pass index for specific coloring
-        });
-        setAiHint(undefined); // Clear any generic hint
+        if (selectedFullTutorSuggestionIndex === index) {
+            // If already selected, deselect and show all highlights again
+            setSelectedFullTutorSuggestionIndex(null);
+            const allSuggestionSquares = fullTutorSuggestions.map((s, idx) => ({
+                from: s.suggestedMoveFromSquare as Square,
+                to: s.suggestedMoveToSquare as Square,
+                hintIndex: idx
+            }));
+            setHighlightedHintSquares(allSuggestionSquares);
+        } else {
+            // Select new suggestion
+            setSelectedFullTutorSuggestionIndex(index);
+            setHighlightedHintSquares({ 
+                from: suggestion.suggestedMoveFromSquare as Square, 
+                to: suggestion.suggestedMoveToSquare as Square,
+                hintIndex: index 
+            });
+        }
+        setAiHint(undefined); 
     }
-  }, [fullTutorSuggestions]);
+  }, [fullTutorSuggestions, selectedFullTutorSuggestionIndex]);
 
 
   const resetGame = useCallback(() => {
@@ -629,12 +614,11 @@ const ChessPage: React.FC = () => {
       setIsLoadingAiMove(true);
       setAiMoveExplanationOutput(null); 
       
+      // If AI is playing, and full tutor mode was active for player, clear its suggestions
       if (isFullTutoringMode) {
         setFullTutorSuggestions(null);
         setSelectedFullTutorSuggestionIndex(null);
-        if (Array.isArray(highlightedHintSquares)) { 
-          setHighlightedHintSquares(null);
-        }
+        setHighlightedHintSquares(null);
       }
 
 
@@ -721,10 +705,16 @@ const ChessPage: React.FC = () => {
     }
 
     setIsLoadingAiTutor(true);
-    setSelectedFullTutorSuggestionIndex(null); 
-    
+    // If full tutoring is on, and a hint is requested, the hint takes precedence.
+    // Clear full tutor specific states.
+    if (isFullTutoringMode) {
+        setFullTutorSuggestions(null);
+        setSelectedFullTutorSuggestionIndex(null);
+    }
+    // Highlighted squares will be managed by the hint logic below.
+    // If hintLevel was 0 or 2 (about to show vague or reset), clear highlights.
     if (hintLevel === 0 || hintLevel === 2) {
-        setHighlightedHintSquares(null); 
+        setHighlightedHintSquares(null);
     }
     
     const fen = boardToFen(board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber);
@@ -739,7 +729,7 @@ const ChessPage: React.FC = () => {
           isPlayerInCheck: playerCurrentlyInCheck,
         });
         setAiHint({ explanation: result.vagueHint, type: 'vague' });
-        setHighlightedHintSquares(null); 
+        setHighlightedHintSquares(null); // Vague hint doesn't highlight squares
         setHintLevel(1);
         toast({ 
             title: "General Tip", 
@@ -761,7 +751,7 @@ const ChessPage: React.FC = () => {
             from: result.suggestedMoveFromSquare as Square,
             to: result.suggestedMoveToSquare as Square
         });
-        setHighlightedHintSquares({ from: result.suggestedMoveFromSquare as Square, to: result.suggestedMoveToSquare as Square, hintIndex: -1 }); // -1 for generic specific hint
+        setHighlightedHintSquares({ from: result.suggestedMoveFromSquare as Square, to: result.suggestedMoveToSquare as Square, hintIndex: -1 }); // -1 for generic specific hint color
         setHintLevel(2);
         
         toast({ 
@@ -843,7 +833,7 @@ const ChessPage: React.FC = () => {
   let currentSelectedHintThemeForBoard: { bgClass: string; ringClass: string } | null = null;
   if (highlightedHintSquares && !Array.isArray(highlightedHintSquares) && highlightedHintSquares.hintIndex !== undefined) {
     if (highlightedHintSquares.hintIndex === -1) { // Generic specific hint
-        // Use default blue hint colors
+        // Default blue hint colors are applied by ChessboardComponent directly if no custom theme
     } else if (highlightedHintSquares.hintIndex >= 0 && suggestionColorThemes[highlightedHintSquares.hintIndex % suggestionColorThemes.length]) {
         const theme = suggestionColorThemes[highlightedHintSquares.hintIndex % suggestionColorThemes.length];
         currentSelectedHintThemeForBoard = { bgClass: theme.boardHighlightBg, ringClass: theme.boardHighlightRing };
@@ -885,7 +875,7 @@ const ChessPage: React.FC = () => {
             playerColor={playerColor}
             kingInCheckSquare={kingInCheckSquare}
             highlightedHintSquares={highlightedHintSquares}
-            suggestionColorThemes={suggestionColorThemes} // Pass themes
+            suggestionColorThemes={suggestionColorThemes} 
             selectedHintCustomTheme={currentSelectedHintThemeForBoard}
           />
         </div>
@@ -898,7 +888,7 @@ const ChessPage: React.FC = () => {
             onRedo={handleRedo}
             canUndo={canUndo}
             canRedo={canRedo}
-            isLoadingHint={isLoadingAiTutor && hintLevel !== 0} 
+            isLoadingHint={isLoadingAiTutor && hintLevel !== 0 && !isFullTutoringMode} 
             difficulty={difficulty}
             onDifficultyChange={handleDifficultyChange}
             isPlayerTurn={turn === playerColor}
