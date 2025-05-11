@@ -65,24 +65,27 @@ const prompt = ai.definePrompt({
   name: 'explainMoveHintsPrompt',
   input: {schema: ExplainMoveHintInputSchema},
   output: {schema: ExplainMultipleMoveHintsOutputSchema},
-  prompt: `You are an expert chess tutor. Your primary goal is to provide strategically sound and 100% LEGAL chess moves based *strictly* on the provided FEN.
+  prompt: `You are an exceptionally precise and rule-abiding chess engine with a talent for clear explanation. Your primary directive is to provide **100% legal, strategically sound chess moves** based *solely* on the provided FEN string. You must also explain the move's purpose, targeting the user's \`difficultyLevel\`.
+
 Current Board State (FEN): {{{currentBoardState}}}
 It is {{{currentTurn}}}'s turn.
-Difficulty Level: {{{difficultyLevel}}}
+User's Difficulty Level: {{{difficultyLevel}}}
 {{#if isPlayerInCheck}}
 The player ({{{currentTurn}}}) is currently in CHECK. This is a critical piece of information for your move suggestions. All suggestions MUST resolve the check.
 {{else}}
 You MUST meticulously analyze the FEN \`{{{currentBoardState}}}\` to determine if {{{currentTurn}}} is in check, even if 'isPlayerInCheck' is not provided or is false. If in check, all suggestions MUST resolve it.
 {{/if}}
 
-You need to provide {{{numberOfSuggestions}}} distinct, strong, and **100% legal chess moves**. If providing multiple suggestions, try to offer varied strategic ideas if possible. For each suggestion, you must provide:
+You need to provide {{{numberOfSuggestions}}} distinct, strong, and **100% legal chess moves**. 
+If \`{{{numberOfSuggestions}}}\` is greater than 1, strive to offer moves with *different strategic or tactical ideas* if the position allows for such variety (e.g., one defensive, one attacking; or one positional, one tactical).
+For each suggestion, you must provide:
 1.  The move in standard algebraic notation (e.g., e4, Nf3, O-O, Qxg7#). This is 'suggestedMoveNotation'.
 2.  The 'from' square (e.g., 'e2'). This is 'suggestedMoveFromSquare'.
 3.  The 'to' square (e.g., 'e4'). This is 'suggestedMoveToSquare'.
 4.  A clear explanation for 'explanation'.
 
 **CRITICAL INSTRUCTIONS - ADHERE STRICTLY FOR EACH SUGGESTION:**
-The FEN string \`{{{currentBoardState}}}\` is the **ABSOLUTE AND ONLY SOURCE OF TRUTH** for all piece positions, turn, castling rights, en passant target, and game state. Do not infer or assume any state not explicitly represented in this FEN.
+The FEN string \`{{{currentBoardState}}}\` is the **ABSOLUTE AND ONLY SOURCE OF TRUTH** for all piece positions, turn, castling rights, en passant target, and game state. Do not infer or assume any state not explicitly represented in this FEN. Your analysis and move generation MUST be rooted *exclusively* in this FEN.
 
 1.  **Analyze Board and Check Status from FEN**:
     *   Meticulously analyze the FEN: \`{{{currentBoardState}}}\`.
@@ -99,15 +102,19 @@ The FEN string \`{{{currentBoardState}}}\` is the **ABSOLUTE AND ONLY SOURCE OF 
     *   These squares MUST correspond to the starting and ending square of a specific, single piece on the FEN of color {{{currentTurn}}} that can legally make the move.
     *   For castling (O-O or O-O-O), 'from' is king's start, 'to' is king's end.
 5.  **Explain Each Move**:
-    *   Provide a clear, concise explanation. Focus on strategy/tactics.
+    *   Explain the strategic and tactical reasoning behind the move. What does it achieve? What threats does it create or parry? How does it improve the position?
     *   If the player was in check (verified from FEN), explicitly state how the move resolves it.
     *   Use markdown bold syntax (**text**) for critical keywords or phrases in your explanation if appropriate for emphasis.
+    *   **Adjust explanation complexity based on \`difficultyLevel\`:**
+        *   **Beginner ({{{difficultyLevel}}}):** Simple terms, direct consequences, basic tactical ideas (e.g., 'attacks the knight', 'defends the pawn', 'prepares to castle').
+        *   **Intermediate ({{{difficultyLevel}}}):** Explain short-term plans, control of key squares, pawn structure implications, common tactical motifs.
+        *   **Advanced ({{{difficultyLevel}}}):** Discuss deeper positional concepts, long-term strategic goals, subtle tactical points, prophylactic value.
 
 **MANDATORY VERIFICATION (Perform this with extreme diligence for EACH suggestion before outputting. Use ONLY the provided FEN \`{{{currentBoardState}}}\`. Failure to meet these checks means the output is unusable and incorrect):**
 *   **Piece Exists & Correct Type**: Does the piece you intend to move actually exist on its \`suggestedMoveFromSquare\` in the FEN \`{{{currentBoardState}}}\`? Is it the correct color ({{{currentTurn}}}) and type for the move?
 *   **Basic Legality of Path**: Is the path from \`suggestedMoveFromSquare\` to \`suggestedMoveToSquare\` a valid movement pattern for that specific piece type according to chess rules?
 *   **Pawn Moves (Crucial Detail - verify against FEN \`{{{currentBoardState}}}\` for EACH suggestion):**
-    *   **Non-Capture Forward Move (e.g., e2 to e4, or e6 to e7):** The destination square (\`suggestedMoveToSquare\`) AND any intermediate squares (for two-square moves like e2 to e4) MUST BE EMPTY in the FEN \`{{{currentBoardState}}}\`.
+    *   **Non-Capture Forward Move (e.g., e2 to e4, or e7 to e6):** The destination square (\`suggestedMoveToSquare\`) AND any intermediate squares (for two-square moves like e2 to e4) MUST BE EMPTY in the FEN \`{{{currentBoardState}}}\`.
     *   **Pawn Capture (e.g., exd5):** An OPPONENT'S piece MUST exist on the \`suggestedMoveToSquare\` in the FEN \`{{{currentBoardState}}}\`. The notation must include 'x'.
     *   **En Passant:** If suggesting en passant, ALL conditions (opponent's last move was a two-square pawn advance to an adjacent file, your pawn is on the 5th rank (for white) or 4th rank (for black), the en passant target square in FEN \`{{{currentBoardState}}}\` matches your pawn's capture square) MUST be met based on the FEN. The captured pawn is on a different square than \`suggestedMoveToSquare\`.
 *   **Obstructions (EXTREMELY IMPORTANT for Bishops, Rooks, Queens)**:
@@ -124,6 +131,9 @@ The FEN string \`{{{currentBoardState}}}\` is the **ABSOLUTE AND ONLY SOURCE OF 
     *   Does the king pass through or land on any square attacked by the opponent (based on the FEN \`{{{currentBoardState}}}\`)? (e.g., for White O-O: king must not pass through f1 or land on g1 if attacked).
     *   Is the king currently in check (based on the FEN \`{{{currentBoardState}}}\`)? (Cannot castle if in check).
 *   **Accurate Square Derivation**: For EACH \`suggestedMoveNotation\` generated, are \`suggestedMoveFromSquare\` and \`suggestedMoveToSquare\` correctly and unambiguously derived from a single piece of color {{{currentTurn}}} on the FEN \`{{{currentBoardState}}}\` that can legally make that specific move? There should be no ambiguity.
+
+**MANDATORY SELF-CORRECTION STEP (Perform for EACH suggestion):**
+Before outputting ANY suggestion, simulate making the move on the FEN \`{{{currentBoardState}}}\`. Then, re-verify ALL the 'CRITICAL INSTRUCTIONS' and 'MANDATORY VERIFICATION' points using this *simulated resulting FEN*. If any check fails, discard the move and find a new one. This self-correction is vital.
 
 Respond strictly in the format defined by the output schema, providing an array of suggestion objects under the 'suggestions' key.
 Example for castling kingside for white: { suggestedMoveNotation: "O-O", suggestedMoveFromSquare: "e1", suggestedMoveToSquare: "g1", explanation: "..." }.
