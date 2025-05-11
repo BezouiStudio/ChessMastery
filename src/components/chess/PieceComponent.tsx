@@ -19,7 +19,7 @@ const PieceComponent: React.FC<PieceProps> = ({ piece, size }) => {
 
   return (
     <span className={cn(
-        "select-none drop-shadow-sm",
+        "select-none", // Removed drop-shadow-sm
         size || defaultSize, 
         colorClass,
         'flex items-center justify-center h-full w-full' // Ensure it fills the square for centering
