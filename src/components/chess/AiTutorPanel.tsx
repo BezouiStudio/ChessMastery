@@ -6,20 +6,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import type { AiTutorAnalysisOutput } from '@/ai/flows/ai-tutor-analysis';
-import { Lightbulb, Target, ClipboardCheck, Sparkles, Info, Cpu, Bot, Loader, HelpCircle, Brain } from 'lucide-react'; // Added Brain
+import type { ExplainMoveHintOutput } from '@/ai/flows/move-hint-explanation';
+import { Lightbulb, Target, ClipboardCheck, Sparkles, Info, Cpu, Bot, Loader, HelpCircle, Brain, CheckSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { parseAndHighlightText } from '@/lib/text-parser'; 
 import type { Square } from '@/types/chess';
 
 
 interface AiTutorPanelProps {
-  hint?: { move?: string; explanation: string; type: 'vague' | 'specific' };
+  hint?: { move?: string; explanation: string; type: 'vague' | 'specific', from?: Square, to?: Square };
   playerMoveAnalysis?: AiTutorAnalysisOutput;
   aiMoveExplanation?: { move: string; explanation: string };
-  isLoading: boolean; // General loading for manual hints/analysis
-  fullTutorSuggestion?: { move: string; explanation: string; from: Square; to: Square } | null; // New prop
-  isFullTutoringActive?: boolean; // New prop
-  isLoadingFullTutorSuggestion?: boolean; // New prop
+  isLoading: boolean; 
+  fullTutorSuggestions?: ExplainMoveHintOutput[] | null; 
+  isFullTutoringActive?: boolean; 
+  isLoadingFullTutorSuggestion?: boolean;
+  onSelectFullTutorSuggestion?: (suggestion: ExplainMoveHintOutput) => void;
+  highlightedHintSquares?: { from: Square; to: Square } | null;
 }
 
 const FeedbackBlock: React.FC<{
@@ -29,10 +32,25 @@ const FeedbackBlock: React.FC<{
   bgColorClass?: string;
   borderColorClass?: string;
   children: React.ReactNode;
-}> = ({ icon: Icon, title, titleColorClass = "text-foreground", bgColorClass = "bg-background", borderColorClass = "border-border", children }) => (
-  <div className={cn("p-3 sm:p-4 rounded-lg border space-y-2 sm:space-y-3 shadow-sm", bgColorClass, borderColorClass)}>
+  onClick?: () => void;
+  isSelected?: boolean;
+  isClickable?: boolean;
+}> = ({ icon: Icon, title, titleColorClass = "text-foreground", bgColorClass = "bg-background", borderColorClass = "border-border", children, onClick, isSelected, isClickable }) => (
+  <div 
+    className={cn(
+        "p-3 sm:p-4 rounded-lg border space-y-2 sm:space-y-3 shadow-sm transition-all", 
+        bgColorClass, 
+        borderColorClass,
+        isClickable && "cursor-pointer hover:shadow-md hover:border-primary/50",
+        isSelected && "ring-2 ring-purple-500 border-purple-500/70 shadow-lg"
+    )}
+    onClick={onClick}
+    role={isClickable ? "button" : undefined}
+    tabIndex={isClickable ? 0 : undefined}
+    onKeyDown={isClickable ? (e) => (e.key === 'Enter' || e.key === ' ') && onClick?.() : undefined}
+  >
     <div className="flex items-start space-x-2 sm:space-x-3">
-      <Icon className={cn("h-5 w-5 sm:h-6 sm:w-6 shrink-0 mt-0.5", titleColorClass)} />
+      {isSelected && isClickable ? <CheckSquare className={cn("h-5 w-5 sm:h-6 sm:w-6 shrink-0 mt-0.5 text-purple-600 dark:text-purple-400")} /> : <Icon className={cn("h-5 w-5 sm:h-6 sm:w-6 shrink-0 mt-0.5", titleColorClass)} />}
       <h3 className={cn("font-semibold text-base sm:text-lg", titleColorClass)}>{title}</h3>
     </div>
     <div className="pl-[calc(theme(spacing.5)_+_theme(spacing.2))] sm:pl-[calc(theme(spacing.6)_+_theme(spacing.3))] text-sm leading-relaxed space-y-1.5 sm:space-y-2">
@@ -47,9 +65,11 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({
   playerMoveAnalysis, 
   aiMoveExplanation, 
   isLoading,
-  fullTutorSuggestion,
+  fullTutorSuggestions,
   isFullTutoringActive,
-  isLoadingFullTutorSuggestion 
+  isLoadingFullTutorSuggestion,
+  onSelectFullTutorSuggestion,
+  highlightedHintSquares
 }) => {
   
   const generalLoading = isLoading || isLoadingFullTutorSuggestion;
@@ -72,20 +92,44 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({
               </div>
             )}
             
-            {!generalLoading && isFullTutoringActive && fullTutorSuggestion && (
-              <FeedbackBlock
-                icon={Brain}
-                title="Tutor's Suggestion"
-                titleColorClass="text-purple-600 dark:text-purple-400"
-                bgColorClass="bg-purple-500/10"
-                borderColorClass="border-purple-500/30"
-              >
-                <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="default" className="bg-purple-500 dark:bg-purple-600 text-white text-sm sm:text-base px-2 sm:px-2.5 py-0.5 sm:py-1">{fullTutorSuggestion.move}</Badge>
-                </div>
-                <p className="whitespace-pre-wrap">{parseAndHighlightText(fullTutorSuggestion.explanation)}</p>
-              </FeedbackBlock>
+            {!generalLoading && isFullTutoringActive && fullTutorSuggestions && fullTutorSuggestions.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium text-muted-foreground px-1">Tutor's Suggestions:</h3>
+                {fullTutorSuggestions.map((suggestion, index) => {
+                    const isSelected = highlightedHintSquares?.from === suggestion.suggestedMoveFromSquare && highlightedHintSquares?.to === suggestion.suggestedMoveToSquare;
+                    return (
+                        <FeedbackBlock
+                            key={index}
+                            icon={Brain}
+                            title={`Suggestion ${index + 1}`}
+                            titleColorClass="text-purple-600 dark:text-purple-400"
+                            bgColorClass={isSelected ? "bg-purple-500/20" : "bg-purple-500/10"}
+                            borderColorClass={isSelected ? "border-purple-500/50" : "border-purple-500/30"}
+                            onClick={() => onSelectFullTutorSuggestion?.(suggestion)}
+                            isSelected={isSelected}
+                            isClickable={true}
+                        >
+                            <div className="flex items-center gap-2 mb-1">
+                                <Badge variant="default" className="bg-purple-500 dark:bg-purple-600 text-white text-sm sm:text-base px-2 sm:px-2.5 py-0.5 sm:py-1">{suggestion.suggestedMoveNotation}</Badge>
+                            </div>
+                            <p className="whitespace-pre-wrap">{parseAndHighlightText(suggestion.explanation)}</p>
+                        </FeedbackBlock>
+                    );
+                })}
+              </div>
             )}
+            {!generalLoading && isFullTutoringActive && (!fullTutorSuggestions || fullTutorSuggestions.length === 0) && !isLoadingFullTutorSuggestion && (
+                 <FeedbackBlock
+                    icon={Brain}
+                    title="Tutor Mode Active"
+                    titleColorClass="text-purple-600 dark:text-purple-400"
+                    bgColorClass="bg-purple-500/10"
+                    borderColorClass="border-purple-500/30"
+                >
+                    <p>AI is observing. Play a move or wait for AI's turn to see suggestions. Currently, no specific suggestions for this position.</p>
+                </FeedbackBlock>
+            )}
+
 
             {!generalLoading && hint && hint.type === 'vague' && (
               <FeedbackBlock
@@ -192,7 +236,7 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({
               </FeedbackBlock>
             )}
 
-            {!generalLoading && !hint && !playerMoveAnalysis && !aiMoveExplanation && (!isFullTutoringActive || !fullTutorSuggestion) && (
+            {!generalLoading && !hint && !playerMoveAnalysis && !aiMoveExplanation && (!isFullTutoringActive || !fullTutorSuggestions || fullTutorSuggestions.length === 0) && (
               <div className="flex flex-col items-center justify-center text-center py-8 sm:py-10 text-sm sm:text-base text-muted-foreground space-y-3 sm:space-y-4">
                 <HelpCircle className="h-10 w-10 sm:h-12 sm:w-12 text-primary/70" />
                 <p className="max-w-xs">Play a move, request a hint, or enable Full Tutoring Mode to get feedback.</p>
