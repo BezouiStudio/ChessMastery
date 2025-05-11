@@ -178,15 +178,17 @@ const ChessPage: React.FC = () => {
     }
   }, [findKing]);
 
- const clearAiTutorState = useCallback(() => {
+ const clearAiTutorState = useCallback((keepFullTutorModeConfig = false) => {
     setAiHint(undefined);
     setHighlightedHintSquares(null);
     setSelectedFullTutorSuggestionIndex(null);
     setHintLevel(0);
     setPlayerMoveAnalysis(null); 
     setAiMoveExplanationOutput(null);
-    setFullTutorSuggestions(null); 
-    setFullTutorGeneralTip(null);
+    if (!keepFullTutorModeConfig) {
+      setFullTutorSuggestions(null); 
+      setFullTutorGeneralTip(null);
+    }
   }, []);
 
 
@@ -242,12 +244,13 @@ const ChessPage: React.FC = () => {
         }
         
         let evalSnippet = result.playerMoveEvaluation;
+        // Try to get the first 2-3 sentences, or up to a certain length
         const sentences = result.playerMoveEvaluation.split('. ');
         if (sentences.length > 2) {
-            evalSnippet = sentences.slice(0, 2).join('. ') + '.';
+             evalSnippet = sentences.slice(0, Math.min(3, sentences.length -1 )).join('. ') + '.'; // Take up to 3, ensure a period
         }
-        if (evalSnippet.length > 200) {
-             evalSnippet = evalSnippet.substring(0, 200) + "...";
+        if (evalSnippet.length > 250) { // Increased length
+             evalSnippet = evalSnippet.substring(0, 250) + "...";
         }
         toastDescriptionContent += evalSnippet;
       }
@@ -256,11 +259,11 @@ const ChessPage: React.FC = () => {
         const suggestion = result.betterPlayerMoveSuggestions[0];
         let betterMoveText = ` Consider: ${suggestion.move}. ${suggestion.explanation}`;
         const betterMoveSentences = betterMoveText.split('. ');
-         if (betterMoveSentences.length > 1) {
-            betterMoveText = betterMoveSentences.slice(0, 1).join('. ') + '.';
+         if (betterMoveSentences.length > 1) { // Try to get first sentence of suggestion
+            betterMoveText = betterMoveSentences[0] + '.';
         }
-        if (betterMoveText.length > 150) {
-            betterMoveText = betterMoveText.substring(0, 150) + "...";
+        if (betterMoveText.length > 180) { // Increased length
+            betterMoveText = betterMoveText.substring(0, 180) + "...";
         }
         toastDescriptionContent += (toastDescriptionContent ? " " : "") + betterMoveText;
 
@@ -357,7 +360,7 @@ const ChessPage: React.FC = () => {
     setMoveHistory(prev => [...prev, moveNotation]);
     setLastMove({ from: fromSq, to: toSq });
     
-    clearAiTutorState(); 
+    clearAiTutorState(isFullTutoringMode); // Keep full tutor mode config if active
     updateGameStatusDisplay(newBoard, newTurn, updatedCastlingRights, updatedEnPassantTarget);
     setSelectedSquare(null);
     setValidMoves([]);
@@ -373,7 +376,7 @@ const ChessPage: React.FC = () => {
     board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber, 
     updateGameStatusDisplay, playerColor,
     isCheckmate, isStalemate, 
-    fetchPlayerMoveAnalysis, saveCurrentStateToHistory, clearAiTutorState, moveHistory
+    fetchPlayerMoveAnalysis, saveCurrentStateToHistory, clearAiTutorState, moveHistory, isFullTutoringMode
   ]);
 
   const handleFullTutoringModeChange = useCallback((enabled: boolean) => {
@@ -441,6 +444,12 @@ const ChessPage: React.FC = () => {
 
           if (vagueHintResult) {
             setFullTutorGeneralTip(vagueHintResult.vagueHint);
+            // Display general tip as a toast
+             toast({
+              title: "Tutor's General Guidance",
+              description: <p className="text-sm">{parseAndHighlightText(vagueHintResult.vagueHint)}</p>,
+              duration: 10000, // Show for 10 seconds
+            });
           }
 
           if (multipleHintsResult.suggestions && multipleHintsResult.suggestions.length > 0) {
@@ -940,4 +949,3 @@ const ChessPage: React.FC = () => {
 };
 
 export default ChessPage;
-
