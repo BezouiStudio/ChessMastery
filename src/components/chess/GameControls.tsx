@@ -1,13 +1,14 @@
 // src/components/chess/GameControls.tsx
 'use client';
 
+import React from 'react'; // Added React for useCallback
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Difficulty } from '@/types/chess';
-import { Lightbulb, RotateCcw, Undo, Redo, Settings2, Brain } from 'lucide-react'; 
+import { Lightbulb, RotateCcw, Undo, Redo, Settings2, Brain } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch'; // Import Switch
+import { Switch } from '@/components/ui/switch';
 
 interface GameControlsProps {
   onNewGame: () => void;
@@ -22,9 +23,9 @@ interface GameControlsProps {
   isPlayerTurn: boolean;
   isGameOver: boolean;
   hintLevel: 0 | 1 | 2;
-  isAiProcessing: boolean; 
-  isFullTutoringMode: boolean; // New prop
-  onFullTutoringModeChange: (enabled: boolean) => void; // New prop
+  isAiProcessing: boolean;
+  isFullTutoringMode: boolean;
+  onFullTutoringModeChange: (enabled: boolean) => void;
 }
 
 const GameControls: React.FC<GameControlsProps> = ({
@@ -41,8 +42,8 @@ const GameControls: React.FC<GameControlsProps> = ({
   isGameOver,
   hintLevel,
   isAiProcessing,
-  isFullTutoringMode, // Destructure new prop
-  onFullTutoringModeChange, // Destructure new prop
+  isFullTutoringMode,
+  onFullTutoringModeChange,
 }) => {
   let hintButtonText = 'Get AI Hint';
   if (hintLevel === 0 || hintLevel === 2) {
@@ -50,6 +51,11 @@ const GameControls: React.FC<GameControlsProps> = ({
   } else if (hintLevel === 1) {
       hintButtonText = 'Get Specific Move';
   }
+
+  const handleSelectDifficultyChange = React.useCallback((value: string) => {
+    onDifficultyChange(value as Difficulty);
+  }, [onDifficultyChange]);
+
 
   return (
     <Card className="shadow-lg rounded-lg">
@@ -60,47 +66,47 @@ const GameControls: React.FC<GameControlsProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2 px-3 pb-3 sm:space-y-3 sm:px-4 sm:pb-4">
-        <Button 
-          onClick={onNewGame} 
-          className="w-full text-xs sm:text-sm" 
-          variant="outline" 
+        <Button
+          onClick={onNewGame}
+          className="w-full text-xs sm:text-sm"
+          variant="outline"
           disabled={isAiProcessing}
         >
           <RotateCcw className="mr-2 h-3 w-3 sm:h-4 sm:w-4" /> New Game
         </Button>
-        
+
         <div className="grid grid-cols-2 gap-2">
-          <Button 
-            onClick={onUndo} 
-            disabled={!canUndo || isAiProcessing} 
-            className="w-full text-xs sm:text-sm" 
+          <Button
+            onClick={onUndo}
+            disabled={!canUndo || isAiProcessing}
+            className="w-full text-xs sm:text-sm"
             variant="outline"
           >
             <Undo className="mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Undo
           </Button>
-          <Button 
-            onClick={onRedo} 
-            disabled={!canRedo || isAiProcessing} 
-            className="w-full text-xs sm:text-sm" 
+          <Button
+            onClick={onRedo}
+            disabled={!canRedo || isAiProcessing}
+            className="w-full text-xs sm:text-sm"
             variant="outline"
           >
             <Redo className="mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Redo
           </Button>
         </div>
 
-        <Button 
-          onClick={onHint} 
-          disabled={isLoadingHint || !isPlayerTurn || isGameOver || isAiProcessing || isFullTutoringMode} // Disable if full tutoring is on
+        <Button
+          onClick={onHint}
+          disabled={isLoadingHint || !isPlayerTurn || isGameOver || isAiProcessing || isFullTutoringMode}
           className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-xs sm:text-sm"
         >
           <Lightbulb className="mr-2 h-3 w-3 sm:h-4 sm:w-4" /> {isLoadingHint ? 'Thinking...' : hintButtonText}
         </Button>
-        
+
         <div className="space-y-1 sm:space-y-1.5 pt-1">
           <Label htmlFor="difficulty-select" className="text-xs sm:text-sm font-medium text-muted-foreground">AI Difficulty</Label>
-          <Select 
-            value={difficulty} 
-            onValueChange={(value) => onDifficultyChange(value as Difficulty)}
+          <Select
+            value={difficulty}
+            onValueChange={handleSelectDifficultyChange}
             disabled={isAiProcessing}
           >
             <SelectTrigger id="difficulty-select" className="w-full text-xs sm:text-sm h-9 sm:h-10">
@@ -114,7 +120,6 @@ const GameControls: React.FC<GameControlsProps> = ({
           </Select>
         </div>
 
-        {/* Full Tutoring Mode Switch */}
         <div className="flex items-center justify-between space-x-2 pt-2">
           <Label htmlFor="full-tutoring-mode" className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center">
             <Brain className="mr-2 h-4 w-4 text-purple-500" />
