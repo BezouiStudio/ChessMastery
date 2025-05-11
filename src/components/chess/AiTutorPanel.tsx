@@ -22,7 +22,7 @@ interface AiTutorPanelProps {
   isFullTutoringActive?: boolean; 
   isLoadingFullTutorSuggestion?: boolean;
   onSelectFullTutorSuggestion?: (suggestion: ExplainMoveHintOutput) => void;
-  highlightedHintSquares?: { from: Square; to: Square } | null;
+  highlightedHintSquares?: Array<{ from: Square; to: Square }> | { from: Square; to: Square } | null;
 }
 
 const FeedbackBlock: React.FC<{
@@ -96,12 +96,14 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({
               <div className="space-y-3">
                 <h3 className="text-sm font-medium text-muted-foreground px-1">Tutor's Suggestions:</h3>
                 {fullTutorSuggestions.map((suggestion, index) => {
-                    const isSelected = highlightedHintSquares?.from === suggestion.suggestedMoveFromSquare && highlightedHintSquares?.to === suggestion.suggestedMoveToSquare;
+                    const isSelected = !Array.isArray(highlightedHintSquares) && // Only selected if not an array of all hints
+                                       highlightedHintSquares?.from === suggestion.suggestedMoveFromSquare && 
+                                       highlightedHintSquares?.to === suggestion.suggestedMoveToSquare;
                     return (
                         <FeedbackBlock
                             key={index}
                             icon={Brain}
-                            title={`Suggestion ${index + 1}`}
+                            title={`Suggestion ${index + 1}: ${suggestion.suggestedMoveNotation}`}
                             titleColorClass="text-purple-600 dark:text-purple-400"
                             bgColorClass={isSelected ? "bg-purple-500/20" : "bg-purple-500/10"}
                             borderColorClass={isSelected ? "border-purple-500/50" : "border-purple-500/30"}
@@ -109,9 +111,6 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({
                             isSelected={isSelected}
                             isClickable={true}
                         >
-                            <div className="flex items-center gap-2 mb-1">
-                                <Badge variant="default" className="bg-purple-500 dark:bg-purple-600 text-white text-sm sm:text-base px-2 sm:px-2.5 py-0.5 sm:py-1">{suggestion.suggestedMoveNotation}</Badge>
-                            </div>
                             <p className="whitespace-pre-wrap">{parseAndHighlightText(suggestion.explanation)}</p>
                         </FeedbackBlock>
                     );
@@ -158,9 +157,9 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({
               </FeedbackBlock>
             )}
             
-            {!generalLoading && playerMoveAnalysis && (
+            {!generalLoading && playerMoveAnalysisOutput && (
               <>
-                {playerMoveAnalysis.playerMoveEvaluation && (
+                {playerMoveAnalysisOutput.playerMoveEvaluation && (
                   <FeedbackBlock
                     icon={ClipboardCheck}
                     title="Evaluation of Your Last Move"
@@ -168,10 +167,10 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({
                     bgColorClass="bg-primary/5"
                     borderColorClass="border-primary/20"
                   >
-                    <p className="whitespace-pre-wrap">{parseAndHighlightText(playerMoveAnalysis.playerMoveEvaluation)}</p>
+                    <p className="whitespace-pre-wrap">{parseAndHighlightText(playerMoveAnalysisOutput.playerMoveEvaluation)}</p>
                   </FeedbackBlock>
                 )}
-                {playerMoveAnalysis.betterPlayerMoveSuggestions && playerMoveAnalysis.betterPlayerMoveSuggestions.length > 0 && (
+                {playerMoveAnalysisOutput.betterPlayerMoveSuggestions && playerMoveAnalysisOutput.betterPlayerMoveSuggestions.length > 0 && (
                   <FeedbackBlock
                     icon={Sparkles}
                     title="Better Alternatives for You"
@@ -180,7 +179,7 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({
                     borderColorClass="border-accent/20"
                   >
                     <div className="space-y-2.5 sm:space-y-3">
-                      {playerMoveAnalysis.betterPlayerMoveSuggestions.map((s, i) => (
+                      {playerMoveAnalysisOutput.betterPlayerMoveSuggestions.map((s, i) => (
                         <div key={i} className="p-2 sm:p-2.5 bg-accent/10 rounded-md border border-accent/20 shadow-sm">
                           <Badge variant="default" className="bg-accent text-accent-foreground mr-2 mb-1 text-xs sm:text-sm px-1.5 sm:px-2 py-0.5">{s.move}</Badge>
                           <div className="text-xs sm:text-sm whitespace-pre-wrap leading-snug">{parseAndHighlightText(s.explanation)}</div>
@@ -189,7 +188,7 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({
                     </div>
                   </FeedbackBlock>
                 )}
-                {playerMoveAnalysis.generalBoardAnalysis && (
+                {playerMoveAnalysisOutput.generalBoardAnalysis && (
                   <FeedbackBlock
                     icon={Info}
                     title="Current Board Assessment (for AI)"
@@ -197,10 +196,10 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({
                     bgColorClass="bg-muted/50"
                     borderColorClass="border-muted"
                   >
-                      <p className="whitespace-pre-wrap">{parseAndHighlightText(playerMoveAnalysis.generalBoardAnalysis)}</p>
+                      <p className="whitespace-pre-wrap">{parseAndHighlightText(playerMoveAnalysisOutput.generalBoardAnalysis)}</p>
                    </FeedbackBlock>
                 )}
-                {playerMoveAnalysis.suggestedMovesForCurrentTurn && playerMoveAnalysis.suggestedMovesForCurrentTurn.length > 0 && (
+                {playerMoveAnalysisOutput.suggestedMovesForCurrentTurn && playerMoveAnalysisOutput.suggestedMovesForCurrentTurn.length > 0 && (
                   <FeedbackBlock
                     icon={Cpu}
                     title="AI's Potential Plans"
@@ -209,7 +208,7 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({
                     borderColorClass="border-secondary/40"
                   >
                     <div className="space-y-2.5 sm:space-y-3">
-                    {playerMoveAnalysis.suggestedMovesForCurrentTurn.map((s, i) => (
+                    {playerMoveAnalysisOutput.suggestedMovesForCurrentTurn.map((s, i) => (
                        <div key={i} className="p-2 sm:p-2.5 bg-secondary/30 rounded-md border border-secondary/50 shadow-sm">
                          <Badge variant="secondary" className="mr-2 mb-1 text-xs sm:text-sm px-1.5 sm:px-2 py-0.5">{s.move}</Badge>
                          <div className="text-xs sm:text-sm whitespace-pre-wrap leading-snug">{parseAndHighlightText(s.explanation)}</div>
@@ -221,7 +220,7 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({
               </>
             )}
 
-            {!generalLoading && aiMoveExplanation && (
+            {!generalLoading && aiMoveExplanationOutput && (
                <FeedbackBlock
                 icon={Bot}
                 title={`AI Played`}
@@ -230,13 +229,13 @@ const AiTutorPanel: React.FC<AiTutorPanelProps> = ({
                 borderColorClass="border-accent/30"
                >
                 <div className="flex items-center gap-2 mb-1">
-                  <Badge variant="default" className="bg-accent text-accent-foreground text-sm sm:text-base px-2 sm:px-2.5 py-0.5 sm:py-1">{aiMoveExplanation.move}</Badge>
+                  <Badge variant="default" className="bg-accent text-accent-foreground text-sm sm:text-base px-2 sm:px-2.5 py-0.5 sm:py-1">{aiMoveExplanationOutput.move}</Badge>
                 </div>
-                <p className="whitespace-pre-wrap">{parseAndHighlightText(aiMoveExplanation.explanation)}</p>
+                <p className="whitespace-pre-wrap">{parseAndHighlightText(aiMoveExplanationOutput.explanation)}</p>
               </FeedbackBlock>
             )}
 
-            {!generalLoading && !hint && !playerMoveAnalysis && !aiMoveExplanation && (!isFullTutoringActive || !fullTutorSuggestions || fullTutorSuggestions.length === 0) && (
+            {!generalLoading && !hint && !playerMoveAnalysisOutput && !aiMoveExplanationOutput && (!isFullTutoringActive || !fullTutorSuggestions || fullTutorSuggestions.length === 0) && (
               <div className="flex flex-col items-center justify-center text-center py-8 sm:py-10 text-sm sm:text-base text-muted-foreground space-y-3 sm:space-y-4">
                 <HelpCircle className="h-10 w-10 sm:h-12 sm:w-12 text-primary/70" />
                 <p className="max-w-xs">Play a move, request a hint, or enable Full Tutoring Mode to get feedback.</p>

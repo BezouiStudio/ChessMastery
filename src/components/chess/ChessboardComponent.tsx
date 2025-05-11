@@ -14,7 +14,7 @@ interface ChessboardProps {
   isPlayerTurn: boolean;
   playerColor: 'w' | 'b'; 
   kingInCheckSquare: Square | null;
-  highlightedHintSquares?: { from: Square; to: Square } | null;
+  highlightedHintSquares?: Array<{ from: Square; to: Square }> | { from: Square; to: Square } | null;
 }
 
 const ChessboardComponent: React.FC<ChessboardProps> = ({
@@ -46,8 +46,17 @@ const ChessboardComponent: React.FC<ChessboardProps> = ({
         const isLastMoveOrigin = lastMove?.from === square;
         const isLastMoveTarget = lastMove?.to === square;
         const isKingInCheck = kingInCheckSquare === square;
-        const isHintedFrom = highlightedHintSquares?.from === square;
-        const isHintedTo = highlightedHintSquares?.to === square;
+
+        const checkHintSquare = (hintSpec: { from: Square; to: Square } | null): boolean => {
+          return !!hintSpec && (hintSpec.from === square || hintSpec.to === square);
+        };
+        
+        let isThisSquarePartOfAnyHint = false;
+        if (Array.isArray(highlightedHintSquares)) {
+          isThisSquarePartOfAnyHint = highlightedHintSquares.some(h => checkHintSquare(h));
+        } else {
+          isThisSquarePartOfAnyHint = checkHintSquare(highlightedHintSquares);
+        }
 
         squares.push(
           <div
@@ -57,7 +66,7 @@ const ChessboardComponent: React.FC<ChessboardProps> = ({
               isLightSquare ? "bg-board-light-square" : "bg-board-dark-square",
               (isPlayerTurn || selectedSquare) && "cursor-pointer hover:bg-opacity-80",
               isSelected && "ring-3 ring-highlight-selected ring-inset z-10 bg-highlight-selected/30",
-              (isHintedFrom || isHintedTo) && "bg-highlight-hint/30 ring-2 ring-highlight-hint/70 ring-inset",
+              isThisSquarePartOfAnyHint && !isSelected && "bg-highlight-hint/30 ring-2 ring-highlight-hint/70 ring-inset", // Avoid clash with selected square
             )}
             onClick={() => (isPlayerTurn || selectedSquare) && onSquareClick(square)}
             role="button"
@@ -76,7 +85,7 @@ const ChessboardComponent: React.FC<ChessboardProps> = ({
                 />
               </div>
             )}
-            {(isLastMoveOrigin || isLastMoveTarget) && !isHintedFrom && !isHintedTo && ( // Don't show last move if it's also a hint square to avoid color clash
+            {(isLastMoveOrigin || isLastMoveTarget) && !isThisSquarePartOfAnyHint && !isSelected && ( 
               <div className="absolute inset-0 bg-highlight-move/20 pointer-events-none" />
             )}
              {isKingInCheck && (
@@ -92,9 +101,7 @@ const ChessboardComponent: React.FC<ChessboardProps> = ({
   return (
     <div className={cn(
         "w-full aspect-square rounded-lg overflow-hidden shadow-2xl border-4 border-card mx-auto md:mx-0",
-        "md:max-w-full" // For desktop, allow parent to define size via basis
-        // On mobile, w-full and aspect-square will make it fill width and be square.
-        // Parent container in ChessPage is w-full on mobile.
+        "md:max-w-full" 
       )}>
         <div className="grid grid-cols-8 w-full h-full">
             {renderSquares()}
