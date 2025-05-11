@@ -71,7 +71,7 @@ const prompt = ai.definePrompt({
 *   Current Board FEN: \`{{{currentBoardState}}}\` (This is the ONLY source of truth for piece positions, turn, castling, en passant).
 *   Player to Move: {{{currentTurn}}}
 *   Difficulty: {{{difficultyLevel}}}
-*   Is {{{currentTurn}}} in Check (initial hint): {{#if isPlayerInCheck}}Yes{{else}}No/Unknown (VERIFY FROM FEN){{#if}}
+*   Is {{{currentTurn}}} in Check (initial hint): {{#if isPlayerInCheck}}Yes{{else}}No/Unknown (VERIFY FROM FEN){{/if}}
 *   Number of Suggestions Requested: {{{numberOfSuggestions}}}
 
 **Output Format (Strict JSON):**
