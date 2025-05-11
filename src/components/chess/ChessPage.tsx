@@ -71,8 +71,8 @@ const suggestionColorThemes = [
     selectedBg: "bg-indigo-500/20 dark:bg-indigo-500/30",
     selectedBorder: "border-indigo-500 dark:border-indigo-400",
     ring: "ring-indigo-500 dark:ring-indigo-400",
-    boardHighlightBg: "bg-indigo-500/30",
-    boardHighlightRing: "ring-indigo-500/70"
+    boardHighlightBg: "bg-indigo-500/40 dark:bg-indigo-500/50",
+    boardHighlightRing: "ring-indigo-500/80 dark:ring-indigo-400/80"
   },
   {
     name: "Teal",
@@ -82,8 +82,8 @@ const suggestionColorThemes = [
     selectedBg: "bg-teal-500/20 dark:bg-teal-500/30",
     selectedBorder: "border-teal-500 dark:border-teal-400",
     ring: "ring-teal-500 dark:ring-teal-400",
-    boardHighlightBg: "bg-teal-500/30",
-    boardHighlightRing: "ring-teal-500/70"
+    boardHighlightBg: "bg-teal-500/40 dark:bg-teal-500/50",
+    boardHighlightRing: "ring-teal-500/80 dark:ring-teal-400/80"
   },
   {
     name: "Amber",
@@ -93,8 +93,8 @@ const suggestionColorThemes = [
     selectedBg: "bg-amber-500/20 dark:bg-amber-500/30",
     selectedBorder: "border-amber-500 dark:border-amber-400",
     ring: "ring-amber-500 dark:ring-amber-400",
-    boardHighlightBg: "bg-amber-500/30",
-    boardHighlightRing: "ring-amber-500/70"
+    boardHighlightBg: "bg-amber-500/40 dark:bg-amber-500/50",
+    boardHighlightRing: "ring-amber-500/80 dark:ring-amber-400/80"
   },
 ];
 
@@ -243,9 +243,9 @@ const ChessPage: React.FC = () => {
     newHistoryStack.push(currentSnapshot);
 
     if (newHistoryStack.length > MAX_HISTORY_LENGTH) {
-      newHistoryStack.shift();
+      newHistoryStack.shift(); // Remove oldest state
       setGameHistoryStack(newHistoryStack);
-      setHistoryPointer(newHistoryStack.length - 1);
+      setHistoryPointer(newHistoryStack.length - 1); // Pointer is now at the end of the shortened array
     } else {
       setGameHistoryStack(newHistoryStack);
       setHistoryPointer(newHistoryStack.length - 1);
@@ -261,7 +261,7 @@ const ChessPage: React.FC = () => {
 
       const result = await aiTutorAnalysis({
         boardState: fen,
-        currentTurn: currentTurnForFen,
+        currentTurn: currentTurnForFen, // AI's turn
         lastPlayerMove: playerLastMove,
         lastMoveMadeByWhite: playerLastMove ? playerWhoMadeLastMoveColor === 'w' : undefined,
         lastMoveMadeByBlack: playerLastMove ? playerWhoMadeLastMoveColor === 'b' : undefined,
@@ -269,6 +269,7 @@ const ChessPage: React.FC = () => {
       });
       setPlayerMoveAnalysis(result);
 
+      // Enhanced Toast Notification Logic
       const descriptionElements: React.ReactNode[] = [];
       let toastTitle = "Your Move Analyzed";
       let toastDescriptionContent = "";
@@ -278,46 +279,51 @@ const ChessPage: React.FC = () => {
         if (qualityMatch && qualityMatch[1]) {
           toastTitle = `Your Move: ${qualityMatch[1]}`;
         }
-
+        
+        // Get first 1-2 sentences for evaluation, more if short.
         let evalSnippet = result.playerMoveEvaluation;
         const sentences = result.playerMoveEvaluation.split('. ');
         if (sentences.length > 2) {
-          evalSnippet = sentences.slice(0, Math.min(3, sentences.length - 1)).join('. ') + '.';
+            evalSnippet = sentences.slice(0, Math.min(3, sentences.length - 1)).join('. ') + '.';
         } else {
            evalSnippet = sentences.slice(0, Math.min(2, sentences.length)).join('. ') + (sentences.length > 1 ? '.' : '');
         }
-        if (evalSnippet.length > 250) {
+        if (evalSnippet.length > 250) { // Slightly increased limit
           evalSnippet = evalSnippet.substring(0, 250) + "...";
         }
         toastDescriptionContent += evalSnippet;
       }
 
       if (result.betterPlayerMoveSuggestions && result.betterPlayerMoveSuggestions.length > 0) {
-        const suggestion = result.betterPlayerMoveSuggestions[0];
+        const suggestion = result.betterPlayerMoveSuggestions[0]; // Show one best alternative in toast
         let betterMoveText = ` Consider: **${suggestion.move}**. ${suggestion.explanation}`;
+        
+        // Try to get first sentence of explanation
         const betterMoveSentences = betterMoveText.split('. ');
         if (betterMoveSentences.length > 1) {
-          betterMoveText = betterMoveSentences[0] + '.';
+            betterMoveText = betterMoveSentences[0] + '.';
         }
-        if (betterMoveText.length > 180) {
-          betterMoveText = betterMoveText.substring(0, 180) + "...";
+        if (betterMoveText.length > 180) { // Increased limit
+            betterMoveText = betterMoveText.substring(0, 180) + "...";
         }
         toastDescriptionContent += (toastDescriptionContent ? " " : "") + betterMoveText;
 
-      } else if (result.playerMoveEvaluation) {
-        const isPositiveMove = result.playerMoveEvaluation.toLowerCase().includes("excellent") ||
-          result.playerMoveEvaluation.toLowerCase().includes("good") ||
-          result.playerMoveEvaluation.toLowerCase().includes("strong") ||
-          result.playerMoveEvaluation.toLowerCase().includes("optimal") ||
-          result.playerMoveEvaluation.toLowerCase().includes("best");
+      } else if (result.playerMoveEvaluation) { // Check if the move was good and no alternatives were suggested
+         const isPositiveMove = result.playerMoveEvaluation.toLowerCase().includes("excellent") || 
+                                result.playerMoveEvaluation.toLowerCase().includes("brilliant") || 
+                                result.playerMoveEvaluation.toLowerCase().includes("good") ||
+                                result.playerMoveEvaluation.toLowerCase().includes("strong") ||
+                                result.playerMoveEvaluation.toLowerCase().includes("optimal") ||
+                                result.playerMoveEvaluation.toLowerCase().includes("best");
         if (isPositiveMove && (!result.betterPlayerMoveSuggestions || result.betterPlayerMoveSuggestions.length === 0)) {
-          toastDescriptionContent += (toastDescriptionContent ? " " : "") + "This was a strong move! No clearly better alternatives found.";
+            toastDescriptionContent += (toastDescriptionContent ? " " : "") + "This was a strong move! No significantly better alternatives found.";
         }
       }
 
+
       if (toastDescriptionContent) {
         descriptionElements.push(
-          <p key="analysis-content" className="text-xs line-clamp-5">
+          <p key="analysis-content" className="text-xs line-clamp-5"> 
             {parseAndHighlightText(toastDescriptionContent)}
           </p>
         );
@@ -325,14 +331,16 @@ const ChessPage: React.FC = () => {
         toast({
           title: toastTitle,
           description: <div className="space-y-0.5">{descriptionElements}</div>,
-          duration: 20000,
+          duration: 20000, // Extended duration for readability
         });
       }
 
     } catch (error) {
       console.error("Error getting player move analysis:", error);
-      let errorDescription = "Could not fetch player move analysis.";
+       let errorDescription = "Could not fetch player move analysis.";
        if (error instanceof Error && (error.message.includes("parseAndHighlightText") || error.message.includes("Maximum call stack size exceeded"))) {
+        // If parsing causes the error, show plain text in panel and a generic error toast.
+        // The AiTutorPanel will still attempt to render the raw text.
         errorDescription = "Error displaying analysis. Plain text in panel.";
       }
       toast({ title: "Error", description: errorDescription, variant: "destructive" });
@@ -340,7 +348,7 @@ const ChessPage: React.FC = () => {
       setIsLoadingAiTutor(false);
     }
   }, [toast, difficulty]);
-
+  
   const processMove = useCallback((fromSq: Square, toSq: Square, promotionPieceSymbol?: PieceSymbol) => {
     if (isCheckmate || isStalemate) return;
 
@@ -378,14 +386,14 @@ const ChessPage: React.FC = () => {
       piece: piece.symbol,
       captured: actualCaptured,
       promotion: promotionPieceSymbol,
-      boardBeforeMove: board,
-      boardAfterMove: newBoard,
-      turn: prevTurn,
+      boardBeforeMove: board, // board *before* this move
+      boardAfterMove: newBoard, // board *after* this move for check/mate status
+      turn: prevTurn, // The player WHO MADE the move
       isCastlingKingside,
       isCastlingQueenside,
       enPassantTargetOccurred: isEnPassantCapture
     });
-
+    
     saveCurrentStateToHistory(moveThatLedToThisStateSquares, moveNotation);
 
     setBoard(newBoard);
@@ -397,22 +405,23 @@ const ChessPage: React.FC = () => {
     setMoveHistory(prev => [...prev, moveNotation]);
     setLastMove({ from: fromSq, to: toSq });
 
-    clearAiTutorState(isFullTutoringMode);
+    clearAiTutorState(isFullTutoringMode); // Keep full tutor mode config if it's on
     updateGameStatusDisplay(newBoard, newTurn, updatedCastlingRights, updatedEnPassantTarget);
     setSelectedSquare(null);
     setValidMoves([]);
 
     const currentFenForAnalysis = boardToFen(newBoard, newTurn, updatedCastlingRights, updatedEnPassantTarget, newHalfMoveClock, newFullMoveNumber);
-
+    
+    // Fetch analysis only if it was the player's move
     if (prevTurn === playerColor) {
       fetchPlayerMoveAnalysis(currentFenForAnalysis, newTurn, moveNotation);
     } else {
-      setPlayerMoveAnalysis(null);
+      setPlayerMoveAnalysis(null); // Clear player analysis if it was AI's move
     }
   }, [
     board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber,
-    updateGameStatusDisplay, playerColor,
-    isCheckmate, isStalemate,
+    updateGameStatusDisplay, playerColor, 
+    isCheckmate, isStalemate, 
     fetchPlayerMoveAnalysis, saveCurrentStateToHistory, clearAiTutorState, moveHistory, isFullTutoringMode
   ]);
 
@@ -489,11 +498,13 @@ const ChessPage: React.FC = () => {
   const handleFullTutoringModeChange = useCallback((enabled: boolean) => {
     setIsFullTutoringMode(enabled);
     if (!enabled) {
+      // Clear all full tutor specific states
       setFullTutorSuggestions(null);
       setFullTutorGeneralTip(null);
-      setHighlightedHintSquares(null);
+      setHighlightedHintSquares(null); // Clear all highlights
       setSelectedFullTutorSuggestionIndex(null);
     } else {
+      // If enabling, clear regular hint state
       setAiHint(undefined);
       setHintLevel(0);
     }
@@ -501,7 +512,7 @@ const ChessPage: React.FC = () => {
 
   const handleDifficultyChange = useCallback((newDiff: Difficulty) => {
     setDifficulty(newDiff);
-    clearAiTutorState();
+    clearAiTutorState(); // Clear all AI tutor outputs on difficulty change
   }, [clearAiTutorState]);
 
 
@@ -509,17 +520,18 @@ const ChessPage: React.FC = () => {
     if (
       isFullTutoringMode &&
       turn === playerColor &&
-      !aiHint &&
+      !aiHint && // Ensure no regular hint is active
       !isCheckmate &&
       !isStalemate &&
-      !isLoadingAiMove &&
-      !isLoadingAiTutor &&
-      !isFetchingFullTutorContentRef.current
+      !isLoadingAiMove && // Not while AI is making its own move
+      !isLoadingAiTutor && // Not while any other tutor analysis is loading
+      !isFetchingFullTutorContentRef.current // Not while this specific fetch is already in progress
     ) {
       const fetchFullTutorData = async () => {
-        isFetchingFullTutorContentRef.current = true;
+        isFetchingFullTutorContentRef.current = true; // Set flag before async operation
         setIsFetchingFullTutorContent(true);
-
+        
+        // Clear previous full tutor specific UI elements before fetching new ones
         setSelectedFullTutorSuggestionIndex(null);
         setHighlightedHintSquares(null);
         setFullTutorGeneralTip(null);
@@ -527,7 +539,7 @@ const ChessPage: React.FC = () => {
 
 
         const fen = boardToFen(board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber);
-        const playerCurrentlyInCheck = isCheck;
+        const playerCurrentlyInCheck = isCheck; // Use the current isCheck state
 
         try {
           const [vagueHintResult, multipleHintsResult] = await Promise.all([
@@ -542,29 +554,26 @@ const ChessPage: React.FC = () => {
               currentTurn: turn,
               difficultyLevel: difficulty,
               isPlayerInCheck: playerCurrentlyInCheck,
-              numberOfSuggestions: 3,
+              numberOfSuggestions: 3, // Request 3 suggestions
             })
           ]);
 
           if (vagueHintResult) {
             setFullTutorGeneralTip(vagueHintResult.vagueHint);
-            toast({
-              title: "Tutor's General Guidance",
-              description: <p className="text-sm">{parseAndHighlightText(vagueHintResult.vagueHint)}</p>,
-              duration: 10000,
-            });
+            // Toast for general tip is now handled by GameStatus display
           }
 
           if (multipleHintsResult.suggestions && multipleHintsResult.suggestions.length > 0) {
             setFullTutorSuggestions(multipleHintsResult.suggestions);
+            // Highlight all suggestions initially
             const allSuggestionSquares = multipleHintsResult.suggestions.map((s, index) => ({
               from: s.suggestedMoveFromSquare as Square,
               to: s.suggestedMoveToSquare as Square,
-              hintIndex: index
+              hintIndex: index // Pass index for theming
             }));
             setHighlightedHintSquares(allSuggestionSquares);
           } else {
-            setHighlightedHintSquares(null);
+            setHighlightedHintSquares(null); // No suggestions, no highlights
           }
         } catch (error) {
           console.error("Error fetching full tutor data:", error);
@@ -574,53 +583,58 @@ const ChessPage: React.FC = () => {
           toast({ title: "Tutor Error", description: "Could not get tutor guidance.", variant: "destructive" });
         } finally {
           setIsFetchingFullTutorContent(false);
-          isFetchingFullTutorContentRef.current = false;
+          isFetchingFullTutorContentRef.current = false; // Reset flag after async operation
         }
       };
 
       fetchFullTutorData();
-
+      
     } else if (!isFullTutoringMode || turn !== playerColor || isCheckmate || isStalemate || aiHint) {
+      // Conditions met to clear full tutor display (e.g., mode off, AI's turn, game over, or regular hint active)
       if (fullTutorGeneralTip) setFullTutorGeneralTip(null);
       if (fullTutorSuggestions) setFullTutorSuggestions(null);
+      // Clear highlights if they were from full tutor mode and it's no longer relevant
       if (selectedFullTutorSuggestionIndex !== null || (Array.isArray(highlightedHintSquares) && !aiHint)) {
-        setHighlightedHintSquares(null);
-        setSelectedFullTutorSuggestionIndex(null);
+         setHighlightedHintSquares(null);
+         setSelectedFullTutorSuggestionIndex(null);
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps 
   }, [
-    isFullTutoringMode, turn, playerColor, board, castlingRights, enPassantTarget,
-    halfMoveClock, fullMoveNumber, isCheck, difficulty,
-    isCheckmate, isStalemate, aiHint, toast,
-    isLoadingAiMove, isLoadingAiTutor
+    isFullTutoringMode, turn, playerColor, board, castlingRights, enPassantTarget, 
+    halfMoveClock, fullMoveNumber, isCheck, difficulty, 
+    isCheckmate, isStalemate, aiHint, toast, 
+    // isLoadingAiMove, isLoadingAiTutor are important to prevent re-fetching during other AI activities
+    // Not including them directly to avoid loop, managed by isFetchingFullTutorContentRef
   ]);
 
   const handleSelectFullTutorSuggestion = useCallback((suggestion: ExplainMoveHintOutput) => {
     if (!fullTutorSuggestions) return;
-    const index = fullTutorSuggestions.findIndex(s =>
+    const index = fullTutorSuggestions.findIndex(s => 
       s.suggestedMoveNotation === suggestion.suggestedMoveNotation &&
       s.suggestedMoveFromSquare === suggestion.suggestedMoveFromSquare &&
       s.suggestedMoveToSquare === suggestion.suggestedMoveToSquare
     );
 
     if (index !== -1) {
-      if (selectedFullTutorSuggestionIndex === index) {
-        setSelectedFullTutorSuggestionIndex(null);
-        const allSuggestionSquares = fullTutorSuggestions.map((s, idx) => ({
-          from: s.suggestedMoveFromSquare as Square,
-          to: s.suggestedMoveToSquare as Square,
-          hintIndex: idx
+      if (selectedFullTutorSuggestionIndex === index) { // Clicked already selected suggestion
+        setSelectedFullTutorSuggestionIndex(null); // Deselect
+        // Re-highlight all suggestions
+        const allSuggestionSquares = fullTutorSuggestions.map((s, idx) => ({ 
+            from: s.suggestedMoveFromSquare as Square, 
+            to: s.suggestedMoveToSquare as Square,
+            hintIndex: idx 
         }));
         setHighlightedHintSquares(allSuggestionSquares);
-      } else {
+      } else { // Clicked a new suggestion
         setSelectedFullTutorSuggestionIndex(index);
-        setHighlightedHintSquares({
-          from: suggestion.suggestedMoveFromSquare as Square,
-          to: suggestion.suggestedMoveToSquare as Square,
-          hintIndex: index
+        setHighlightedHintSquares({ 
+            from: suggestion.suggestedMoveFromSquare as Square, 
+            to: suggestion.suggestedMoveToSquare as Square,
+            hintIndex: index // Pass index for specific theming
         });
       }
-      setAiHint(undefined);
+      setAiHint(undefined); // Ensure regular hint is cleared if a tutor suggestion is interacted with
     }
   }, [fullTutorSuggestions, selectedFullTutorSuggestionIndex]);
 
@@ -647,13 +661,13 @@ const ChessPage: React.FC = () => {
     setKingInCheckSquare(null);
     setGameStatusText("White's Turn");
 
-    clearAiTutorState();
-    setIsFullTutoringMode(false);
+    clearAiTutorState(); // Clears AI tutor info
+    setIsFullTutoringMode(false); // Turn off full tutoring mode on reset
 
-    setGameHistoryStack([getInitialGameStateForHistory()]);
+    setGameHistoryStack([getInitialGameStateForHistory()]); // Reset history
     setHistoryPointer(0);
 
-    setIsLoadingAiMove(false);
+    setIsLoadingAiMove(false); // Reset loading flags
     setIsLoadingAiTutor(false);
     setIsFetchingFullTutorContent(false);
     isFetchingFullTutorContentRef.current = false;
@@ -686,16 +700,16 @@ const ChessPage: React.FC = () => {
           }
         }
         processMove(selectedSquare, square);
-      } else {
-        if (pieceOnClickedSquare && pieceOnClickedSquare.color === turn) {
+      } else { // Clicked on a square not in validMoves
+        if (pieceOnClickedSquare && pieceOnClickedSquare.color === turn) { // If clicked own piece, select it
           setSelectedSquare(square);
           setValidMoves(getLegalMoves(board, square, turn, castlingRights, enPassantTarget));
-        } else {
+        } else { // Clicked empty or opponent piece (not a valid move target)
           setSelectedSquare(null);
           setValidMoves([]);
         }
       }
-    } else if (pieceOnClickedSquare && pieceOnClickedSquare.color === turn) {
+    } else if (pieceOnClickedSquare && pieceOnClickedSquare.color === turn) { // No square selected, clicked own piece
       setSelectedSquare(square);
       setValidMoves(getLegalMoves(board, square, turn, castlingRights, enPassantTarget));
     }
@@ -713,18 +727,19 @@ const ChessPage: React.FC = () => {
   useEffect(() => {
     if (turn === aiColor && !isCheckmate && !isStalemate && !isLoadingAiMove && !isLoadingAiTutor && !isFetchingFullTutorContentRef.current) {
       setIsLoadingAiMove(true);
-      setAiMoveExplanationOutput(null);
+      setAiMoveExplanationOutput(null); // Clear previous AI move explanation
 
-      if (isFullTutoringMode) {
-        setFullTutorSuggestions(null);
-        setFullTutorGeneralTip(null);
-        setSelectedFullTutorSuggestionIndex(null);
-        setHighlightedHintSquares(null);
+      if (isFullTutoringMode) { // Clear tutor suggestions if AI is about to move
+          setFullTutorSuggestions(null);
+          setFullTutorGeneralTip(null);
+          setSelectedFullTutorSuggestionIndex(null);
+          setHighlightedHintSquares(null);
       }
 
 
       const fenBeforeMove = boardToFen(board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber);
-      const boardBeforeAiMoveForSim = board.map(r => [...r]);
+      // Simulate the board state accurately for AI move notation and explanation
+      const boardBeforeAiMoveForSim = board.map(r => [...r]); 
       const castlingRightsBeforeAiMove = castlingRights;
       const enPassantTargetBeforeAiMove = enPassantTarget;
 
@@ -739,25 +754,29 @@ const ChessPage: React.FC = () => {
             if (aiPiece?.symbol === 'p') {
               const { row: toRow } = squareToCoords(aiMove.to);
               if ((aiPiece.color === 'w' && toRow === 0) || (aiPiece.color === 'b' && toRow === 7)) {
-                promotionSymbol = 'q';
+                promotionSymbol = 'q'; // Default AI promotion to Queen
               }
             }
 
+            // Get notation *before* calling processMove, using the simulated board state
             const { newBoard: boardAfterAiMoveSim, isCastlingKingside, isCastlingQueenside, capturedPiece: simCapturedPiece } = applyMoveLogic(
-              boardBeforeAiMoveForSim, aiMove.from, aiMove.to, castlingRightsBeforeAiMove, enPassantTargetBeforeAiMove, promotionSymbol
+                boardBeforeAiMoveForSim, aiMove.from, aiMove.to, castlingRightsBeforeAiMove, enPassantTargetBeforeAiMove, promotionSymbol
             );
             const isEnPassantCaptureForAi = aiPiece?.symbol === 'p' && aiMove.to === enPassantTargetBeforeAiMove && aiMove.from !== aiMove.to;
             const actualCapturedForAi = !!simCapturedPiece || isEnPassantCaptureForAi;
-
+            
             aiPlayedMoveNotation = moveToAlgebraic({
-              from: aiMove.from, to: aiMove.to, piece: aiPiece!.symbol, captured: actualCapturedForAi, promotion: promotionSymbol,
-              boardBeforeMove: boardBeforeAiMoveForSim, boardAfterMove: boardAfterAiMoveSim, turn: aiColor,
-              isCastlingKingside, isCastlingQueenside, enPassantTargetOccurred: isEnPassantCaptureForAi
+                from: aiMove.from, to: aiMove.to, piece: aiPiece!.symbol, captured: actualCapturedForAi, promotion: promotionSymbol,
+                boardBeforeMove: boardBeforeAiMoveForSim, boardAfterMove: boardAfterAiMoveSim, turn: aiColor,
+                isCastlingKingside, isCastlingQueenside, enPassantTargetOccurred: isEnPassantCaptureForAi
             });
-
-            processMove(aiMove.from, aiMove.to, promotionSymbol);
-
+            
+            processMove(aiMove.from, aiMove.to, promotionSymbol); // This updates the main board and turn
+            
           } else {
+            // This case should only occur if the game is already over (checkmate/stalemate),
+            // which is handled by the initial checks in this useEffect.
+            // If it's reached otherwise, it might indicate an issue.
             console.warn("AI has no legal moves but game is not over. This might be an issue in isCheckmateOrStalemate or getRandomAiMove.");
           }
         } catch (error) {
@@ -767,35 +786,42 @@ const ChessPage: React.FC = () => {
           setIsLoadingAiMove(false);
         }
 
-
+        // Fetch AI move explanation if a move was made and game not over
+        // And no other AI tutor task is running
         if (aiPlayedMoveNotation && !isCheckmate && !isStalemate && !isLoadingAiTutor) {
           setIsLoadingAiTutor(true);
           try {
+             // Check if AI was in check *before* its move for the hint context
             const kingSqForAICheck = findKing(fenToBoard(fenBeforeMove).board, aiColor);
             const aiInCheckBeforeItsMove = kingSqForAICheck ? checkKingInCheck(fenToBoard(fenBeforeMove).board, aiColor) : false;
 
             const explanationResult = await explainMoveHint({
-              currentBoardState: fenBeforeMove,
+              currentBoardState: fenBeforeMove, // FEN *before* AI's move
               currentTurn: aiColor,
               difficultyLevel: difficulty,
-              isPlayerInCheck: aiInCheckBeforeItsMove,
-              numberOfSuggestions: 1
+              isPlayerInCheck: aiInCheckBeforeItsMove, // Pass AI's check status
+              numberOfSuggestions: 1 // Only need explanation for the move AI made
             });
+            // Ensure the explanation is for the move AI *actually* played (if random vs. suggested differ)
+            // For now, we assume explainMoveHint gives a relevant explanation for the position.
             setAiMoveExplanationOutput({ move: aiPlayedMoveNotation, explanation: explanationResult.explanation });
           } catch (error) {
             console.error("Error fetching AI move explanation:", error);
+            // Don't necessarily show a toast here, as the move was made.
+            // The panel will just lack the explanation.
           } finally {
             setIsLoadingAiTutor(false);
           }
         }
-      }, 1000);
+      }, 1000); // Simulate AI thinking time
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    turn, aiColor, board, processMove, isCheckmate, isStalemate,
-    castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber,
-    difficulty, toast, isFullTutoringMode,
-    isLoadingAiMove, isLoadingAiTutor,
-    findKing
+    turn, aiColor, board, processMove, isCheckmate, isStalemate, 
+    castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber, 
+    difficulty, toast, isFullTutoringMode, 
+    // isLoadingAiMove, isLoadingAiTutor not here to avoid loops, managed by ref
+    findKing // Added findKing
   ]);
 
 
@@ -806,20 +832,21 @@ const ChessPage: React.FC = () => {
     }
 
     setIsLoadingAiTutor(true);
-    if (isFullTutoringMode) {
-      setFullTutorSuggestions(null);
-      setFullTutorGeneralTip(null);
-      setSelectedFullTutorSuggestionIndex(null);
+    if (isFullTutoringMode) { // If full tutoring is on, hints clear its display
+        setFullTutorSuggestions(null);
+        setFullTutorGeneralTip(null);
+        setSelectedFullTutorSuggestionIndex(null);
     }
-    if (hintLevel === 0 || hintLevel === 2) {
-      setHighlightedHintSquares(null);
+    if (hintLevel === 0 || hintLevel === 2) { // For vague hint or after specific, reset highlights
+        setHighlightedHintSquares(null);
     }
+
 
     const fen = boardToFen(board, turn, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber);
-    const playerCurrentlyInCheck = isCheck;
+    const playerCurrentlyInCheck = isCheck; // Use current check state
 
     try {
-      if (hintLevel === 0 || hintLevel === 2) {
+      if (hintLevel === 0 || hintLevel === 2) { // Get vague hint
         const result = await getVagueChessHint({
           currentBoardState: fen,
           currentTurn: turn,
@@ -827,40 +854,41 @@ const ChessPage: React.FC = () => {
           isPlayerInCheck: playerCurrentlyInCheck,
         });
         setAiHint({ explanation: result.vagueHint, type: 'vague' });
-        setHighlightedHintSquares(null);
-        setHintLevel(1);
-        toast({
-          title: "General Tip",
+        setHighlightedHintSquares(null); // No board highlight for vague hint
+        setHintLevel(1); // Next hint will be specific
+        toast({ 
+          title: "General Tip", 
           description: <p className="text-sm">{parseAndHighlightText(result.vagueHint)}</p>,
-          duration: 5000
+          duration: 5000 
         });
-      } else if (hintLevel === 1) {
+      } else if (hintLevel === 1) { // Get specific hint
         const result = await explainMoveHint({
           currentBoardState: fen,
           currentTurn: turn,
           difficultyLevel: difficulty,
           isPlayerInCheck: playerCurrentlyInCheck,
-          numberOfSuggestions: 1
+          numberOfSuggestions: 1 // Only need one specific hint
         });
-        setAiHint({
-          move: result.suggestedMoveNotation,
-          explanation: result.explanation,
-          type: 'specific',
-          from: result.suggestedMoveFromSquare as Square,
-          to: result.suggestedMoveToSquare as Square
+        setAiHint({ 
+          move: result.suggestedMoveNotation, 
+          explanation: result.explanation, 
+          type: 'specific', 
+          from: result.suggestedMoveFromSquare as Square, 
+          to: result.suggestedMoveToSquare as Square 
         });
-        setHighlightedHintSquares({ from: result.suggestedMoveFromSquare as Square, to: result.suggestedMoveToSquare as Square, hintIndex: -1 });
-        setHintLevel(2);
-
-        toast({
-          title: `Specific Hint: ${result.suggestedMoveNotation}`,
+        setHighlightedHintSquares({ from: result.suggestedMoveFromSquare as Square, to: result.suggestedMoveToSquare as Square, hintIndex: -1 }); // -1 for default hint color
+        setHintLevel(2); // Next hint will be vague again
+        
+        toast({ 
+          title: `Specific Hint: ${result.suggestedMoveNotation}`, 
           description: <div className="text-xs line-clamp-3">{parseAndHighlightText(result.explanation)}</div>,
-          duration: 8000
+          duration: 8000 
         });
       }
     } catch (error) {
       console.error("Error getting AI hint:", error);
       toast({ title: "Error", description: "Could not fetch AI hint.", variant: "destructive" });
+      // Reset hint level based on where it failed
       if (hintLevel === 0 || hintLevel === 2) setHintLevel(0); else setHintLevel(1);
     } finally {
       setIsLoadingAiTutor(false);
@@ -868,8 +896,9 @@ const ChessPage: React.FC = () => {
   };
 
   const handleUndo = () => {
-    if (historyPointer <= 0) return;
+    if (historyPointer <= 0) return; // Can't undo if at the initial state
 
+    // Clear all AI tutor and loading states
     clearAiTutorState();
     setIsLoadingAiMove(false);
     setIsLoadingAiTutor(false);
@@ -889,7 +918,7 @@ const ChessPage: React.FC = () => {
     setFullMoveNumber(stateToLoad.fullMoveNumber);
     setMoveHistory(stateToLoad.currentMoveHistorySnapshot);
     setLastMove(stateToLoad.moveThatLedToThisStateSquares);
-
+    
     updateGameStatusDisplay(stateToLoad.board, stateToLoad.turn, stateToLoad.castlingRights, stateToLoad.enPassantTarget);
     setSelectedSquare(null);
     setValidMoves([]);
@@ -897,8 +926,9 @@ const ChessPage: React.FC = () => {
   };
 
   const handleRedo = () => {
-    if (historyPointer >= gameHistoryStack.length - 1) return;
+    if (historyPointer >= gameHistoryStack.length - 1) return; // Can't redo if at the latest state
 
+    // Clear all AI tutor and loading states
     clearAiTutorState();
     setIsLoadingAiMove(false);
     setIsLoadingAiTutor(false);
@@ -928,11 +958,13 @@ const ChessPage: React.FC = () => {
   const canRedo = historyPointer < gameHistoryStack.length - 1;
   const combinedAiProcessing = isLoadingAiMove || isLoadingAiTutor || isFetchingFullTutorContent;
 
+  // Determine custom theme for highlighted hint squares (used by ChessboardComponent)
   let currentSelectedHintThemeForBoard: { bgClass: string; ringClass: string } | null = null;
   if (highlightedHintSquares && !Array.isArray(highlightedHintSquares) && highlightedHintSquares.hintIndex !== undefined) {
-    if (highlightedHintSquares.hintIndex === -1) {
-      // Default blue hint colors are applied by ChessboardComponent directly if no custom theme
+    if (highlightedHintSquares.hintIndex === -1) { 
+      // This is for the regular "Get Specific Hint" - ChessboardComponent will use its default blue
     } else if (highlightedHintSquares.hintIndex >= 0 && suggestionColorThemes[highlightedHintSquares.hintIndex % suggestionColorThemes.length]) {
+      // This is for a selected "Full Tutor Suggestion"
       const theme = suggestionColorThemes[highlightedHintSquares.hintIndex % suggestionColorThemes.length];
       currentSelectedHintThemeForBoard = { bgClass: theme.boardHighlightBg, ringClass: theme.boardHighlightRing };
     }
@@ -952,8 +984,11 @@ const ChessPage: React.FC = () => {
           isCheck={isCheck}
           isCheckmate={isCheckmate}
           isStalemate={isStalemate}
-          isDraw={isStalemate}
+          isDraw={isStalemate} // isDraw is essentially stalemate for now
           winner={winner}
+          fullTutorGeneralTip={fullTutorGeneralTip}
+          isFullTutoringMode={isFullTutoringMode}
+          isPlayerTurn={turn === playerColor && !combinedAiProcessing}
         />
       </div>
 
@@ -961,7 +996,7 @@ const ChessPage: React.FC = () => {
         <div
           className="w-full lg:flex-1 lg:max-w-[calc(100vh-20rem)] xl:max-w-[calc(100vh-18rem)] 2xl:max-w-[calc(100vh-16rem)]
                      max-w-[98vw] sm:max-w-[95vw] mx-auto lg:mx-0
-                     flex justify-center items-start aspect-square lg:aspect-auto"
+                     flex justify-center items-start aspect-square lg:aspect-auto" // Retain aspect-square for mobile consistency
         >
           <ChessboardComponent
             board={board}
@@ -1001,16 +1036,16 @@ const ChessPage: React.FC = () => {
               hint={aiHint}
               playerMoveAnalysis={playerMoveAnalysis}
               aiMoveExplanation={aiMoveExplanationOutput}
-              isLoading={isLoadingAiTutor && !isFetchingFullTutorContent}
+              isLoading={isLoadingAiTutor && !isFetchingFullTutorContent} //isLoadingAiTutor is general, isFetchingFullTutorContent is specific
               fullTutorGeneralTip={fullTutorGeneralTip}
               fullTutorSuggestions={fullTutorSuggestions}
               isFullTutoringActive={isFullTutoringMode}
               isLoadingFullTutorContent={isFetchingFullTutorContent}
               onSelectFullTutorSuggestion={handleSelectFullTutorSuggestion}
-              highlightedHintSquares={highlightedHintSquares}
+              highlightedHintSquares={highlightedHintSquares} // Pass all highlighted squares to panel
             />
           </div>
-          <div className="flex-grow min-h-[120px] sm:min-h-[150px] md:min-h-[180px] lg:min-h-0 lg:flex-1 max-h-[25vh] lg:max-h-[calc(var(--aside-width)_*_0.6)]">
+          <div className="flex-grow min-h-[120px] sm:min-h-[150px] md:min-h-[180px] lg:min-h-0 lg:flex-1 max-h-[25vh] lg:max-h-[calc(var(--aside-width)_*_0.6)]"> {/* Use custom prop or calc for max-height */}
             <MoveHistory moves={moveHistory} />
           </div>
         </aside>
@@ -1019,7 +1054,7 @@ const ChessPage: React.FC = () => {
       <PromotionDialog
         isOpen={isPromotionDialogOpen}
         onSelectPiece={handlePromotionSelect}
-        playerColor={playerColor}
+        playerColor={playerColor} // Pass playerColor
       />
 
     </div>
@@ -1027,4 +1062,3 @@ const ChessPage: React.FC = () => {
 };
 
 export default ChessPage;
-
