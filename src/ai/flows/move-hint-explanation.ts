@@ -19,6 +19,7 @@ const ExplainMoveHintInputSchema = z.object({
   difficultyLevel: z
     .enum(['beginner', 'intermediate', 'advanced'])
     .describe('The difficulty level of the AI opponent.'),
+  isPlayerInCheck: z.boolean().optional().describe('Whether the current player (whose turn it is) is in check. If not provided, the AI should deduce this from the FEN.'),
 });
 export type ExplainMoveHintInput = z.infer<typeof ExplainMoveHintInputSchema>;
 
@@ -42,27 +43,44 @@ const prompt = ai.definePrompt({
 Current Board State (FEN): {{{currentBoardState}}}
 It is {{{currentTurn}}}'s turn.
 Difficulty Level: {{{difficultyLevel}}}
+{{#if isPlayerInCheck}}
+The player ({{{currentTurn}}}) is currently in CHECK. This is a critical piece of information.
+{{else}}
+You should analyze the FEN to determine if {{{currentTurn}}} is in check, even if not explicitly stated by 'isPlayerInCheck'.
+{{/if}}
 
-First, analyze the FEN to determine if the player ({{{currentTurn}}}) is currently in check.
-If {{{currentTurn}}} is in check, your suggested move MUST get the king out of check and be a legal move.
-
-Follow these steps to generate your response:
-1.  **Suggest Move**: Identify ONE strong, strategic, and legal next move for {{{currentTurn}}}.
-2.  **Algebraic Notation**: Provide this move in standard algebraic notation (e.g., e4, Nf3, O-O, Qxg7#). This will be 'suggestedMoveNotation'.
-3.  **Identify Squares**:
-    *   Determine the 'from' square (e.g., 'e2') for this specific suggested move. This will be 'suggestedMoveFromSquare'.
-    *   Determine the 'to' square (e.g., 'e4') for this specific suggested move. This will be 'suggestedMoveToSquare'.
-    *   For castling (O-O or O-O-O), the 'from' square is the king's starting square (e.g., e1/e8), and the 'to' square is the king's ending square (g1/c1 or g8/c8 respectively).
-4.  **Explain Move**: Provide a clear, concise, and easy-to-understand explanation of why this move is strong and what it accomplishes.
-    *   Focus on the strategic and tactical implications of the move.
-    *   If the player was in check (based on your FEN analysis), specifically ensure your explanation details how the suggested move addresses the check (e.g., by moving the king, blocking the check, or capturing the attacking piece).
+**CRITICAL INSTRUCTIONS - ADHERE STRICTLY:**
+1.  **Analyze Player's Check Status**:
+    *   Carefully analyze the FEN: \`{{{currentBoardState}}}\`.
+    *   Determine if the player ({{{currentTurn}}}) is currently in check. Use the 'isPlayerInCheck' input if provided, otherwise deduce from FEN.
+2.  **Identify ONE Strong, Legal Move**:
+    *   Based on the board state and whose turn it is ({{{currentTurn}}}), identify a single strong and, most importantly, **100% legal chess move**.
+    *   **If {{{currentTurn}}} is in check (from step 1 or your FEN analysis), this move ABSOLUTELY MUST resolve the check** (by moving the king, blocking the check, or capturing the attacking piece). Failure to do so makes the move illegal.
+    *   Consider the \`difficultyLevel\` ({{{difficultyLevel}}}) when evaluating the strength and complexity of the move.
+3.  **Standard Algebraic Notation**:
+    *   Provide this move in standard algebraic notation (e.g., e4, Nf3, O-O, Qxg7#). This is 'suggestedMoveNotation'.
+4.  **Accurate From/To Squares**:
+    *   From the \`suggestedMoveNotation\` and the \`currentBoardState\`, precisely determine the 'from' square (e.g., 'e2') and the 'to' square (e.g., 'e4').
+    *   For castling (O-O or O-O-O), 'from' is the king's start square (e1/e8), 'to' is the king's end square (g1/c1 or g8/c8 respectively).
+    *   These squares, 'suggestedMoveFromSquare' and 'suggestedMoveToSquare', MUST be accurate for the given notation and board.
+5.  **Explain the Move**:
+    *   Provide a clear, concise explanation for why this move is strong and what it achieves.
+    *   Focus on strategic/tactical implications.
+    *   If the player was in check, explicitly state how the move resolves it.
     *   Use markdown bold syntax (**text**) for critical keywords or phrases in your explanation if appropriate for emphasis.
 
+**VERIFICATION (Perform this mentally before outputting):**
+*   Is the \`suggestedMoveNotation\` a valid move for the piece on \`suggestedMoveFromSquare\` according to standard chess rules? (e.g., Bishop moves diagonally, Knight in 'L' shape, Rook horizontally/vertically, Pawn special moves).
+*   Are there any pieces blocking the path for sliding pieces (Bishop, Rook, Queen) if it's not a capture of the blocking piece?
+*   Does the move leave the player's ({{{currentTurn}}}'s) king in check? If so, it's illegal. The suggested move must result in a position where {{{currentTurn}}}'s king is NOT in check.
+*   Are \`suggestedMoveFromSquare\` and \`suggestedMoveToSquare\` correctly derived from \`suggestedMoveNotation\` and the board state? For example, if suggesting "Be3", ensure the bishop is actually on a square that can legally move to "e3".
+
 Respond strictly in the format defined by the output schema.
-Ensure 'suggestedMoveFromSquare' and 'suggestedMoveToSquare' are accurate for the 'suggestedMoveNotation' you provide.
 Example for castling kingside for white: suggestedMoveNotation: "O-O", suggestedMoveFromSquare: "e1", suggestedMoveToSquare: "g1".
 Example for pawn move: suggestedMoveNotation: "e4", suggestedMoveFromSquare: "e2", suggestedMoveToSquare: "e4".
 Example for knight move: suggestedMoveNotation: "Nf3", suggestedMoveFromSquare: "g1", suggestedMoveToSquare: "f3".
+Ensure your suggested move is not just plausible but strictly adheres to all chess rules. An illegal suggestion is far worse than no suggestion.
+If the board state is unusual or leads to limited options, prioritize legality above all else.
 `,
 });
 
